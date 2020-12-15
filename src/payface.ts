@@ -6,6 +6,6 @@ export abstract class Payface {
 }
 
 export interface T_opt_payface {
-  key?: string
+  id?: string
   secret?: string
 }

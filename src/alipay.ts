@@ -14,14 +14,14 @@ export class Alipay extends Base implements Payface {
     this.validate_opt(opt);
     this.opt = opt;
     this.sdk = new AlipaySdk({
-      appId: opt.key!,
+      appId: opt.id!,
       privateKey: opt.secret!,
     });
   }
 
-  protected validate_opt({ key, secret }: T_opt_alipay) {
-    if ( ! key || ! secret) {
-      throw new Invalid_argument_external({ key, secret });
+  protected validate_opt({ id, secret }: T_opt_alipay) {
+    if ( ! id || ! secret) {
+      throw new Invalid_argument_external({ id, secret });
     }
   }
 
@@ -33,6 +33,7 @@ export class Alipay extends Base implements Payface {
 
   async pay_qrcode() {
     return this.sign('alipay.trade.page.pay', {
+      // todo
       notify_url: 'http://api.test.alipay.net/atinterface/receive_notify.htm',
       return_url: 'https://xxx.com',
       bizContent: {
@@ -46,7 +47,7 @@ export class Alipay extends Base implements Payface {
 }
 
 export interface T_opt_alipay extends T_opt_payface {
-  key: string
+  id: string
   secret: string
   opt_common?: AlipaySdkConfig
 }

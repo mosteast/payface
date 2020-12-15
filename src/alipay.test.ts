@@ -9,7 +9,7 @@ it('pay_qrcode', async () => {
     return;
   }
 
-  const row = new Alipay({ key, secret });
+  const row = new Alipay({ id: key, secret });
   const r = await row.pay_qrcode();
   expect(r).toBeTruthy();
 });

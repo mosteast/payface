@@ -20,8 +20,8 @@
   "dependencies": {
     "@mosteast/common_eid": "^0.1.3",
     "@mosteast/e": "^0.1.8",
-    "alipay-node-sdk": "^1.1.9",
-    "alipay-sdk": "^3.1.5"
+    "alipay-sdk": "^3.1.5",
+    "tenpay": "^2.1.18"
   },
   "devDependencies": {
     "@types/fs-extra": "^8.1.1",
