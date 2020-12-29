@@ -1,7 +1,8 @@
 import { AlipaySdkConfig } from 'alipay-sdk';
 import { Base } from './base';
-import { Invalid_argument_external } from './error/invalid_argument';
+import { require_all } from './error/util/lack_argument';
 import { I_pay_qrcode, Payface, T_opt_payface } from './payface';
+import { random_oid } from './util';
 
 const TenpaySdk = require('tenpay');
 
@@ -10,8 +11,7 @@ export class Tenpay extends Base implements Payface {
   protected sdk!: any;
 
   constructor(opt: T_opt_tenpay) {
-    super();
-    this.validate_opt(opt);
+    super(opt);
     this.opt = opt;
     this.sdk = new TenpaySdk({
       appid: opt.id,
@@ -20,25 +20,22 @@ export class Tenpay extends Base implements Payface {
     });
   }
 
-  protected validate_opt({ id, secret, mchid }: T_opt_tenpay) {
-    if ( ! id || ! secret || ! mchid) {
-      throw new Invalid_argument_external({ id, secret, mchid });
-    }
+  protected validate_opt(opt: T_opt_tenpay) {
+    super.validate_opt(opt);
+    require_all({ mchid: opt.mchid });
   }
 
   async pay_qrcode({ order_id, subject, fee, product_id }: I_pay_qrcode_tenpay): Promise<string> {
+    require_all({ fee });
+
     let { prepay_id, code_url } = await this.sdk.unifiedOrder({
-      out_trade_no: order_id,
-      body: subject,
+      out_trade_no: order_id || random_oid(),
+      body: subject || 'Quick pay',
       total_fee: tenpay_fee(fee),
       trade_type: 'NATIVE',
       product_id: product_id || 'default',
       notify_url: this.opt.notify_url,
     });
-    // let result = await this.sdk.getNativeUrl({
-    //   // todo
-    //   product_id: 'product id',
-    // });
 
     return code_url;
   }

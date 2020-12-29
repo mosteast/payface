@@ -1,29 +1,22 @@
 import AlipaySdk, { AlipaySdkConfig } from 'alipay-sdk';
 import { sign } from 'alipay-sdk/lib/util';
-import { nanoid } from 'nanoid';
 import { URLSearchParams } from 'url';
 import { Base } from './base';
-import { Invalid_argument_external } from './error/invalid_argument';
+import { require_all } from './error/util/lack_argument';
 import { I_pay_qrcode, Payface, T_opt_payface } from './payface';
+import { random_oid } from './util';
 
 export class Alipay extends Base implements Payface {
   protected opt!: T_opt_alipay;
   protected sdk!: AlipaySdk;
 
   constructor(opt: T_opt_alipay) {
-    super();
-    this.validate_opt(opt);
+    super(opt);
     this.opt = opt;
     this.sdk = new AlipaySdk({
       appId: opt.id!,
       privateKey: opt.secret!,
     });
-  }
-
-  protected validate_opt({ id, secret }: T_opt_alipay) {
-    if ( ! id || ! secret) {
-      throw new Invalid_argument_external({ id, secret });
-    }
   }
 
   sign(action: string, params: any) {
@@ -33,13 +26,14 @@ export class Alipay extends Base implements Payface {
   }
 
   async pay_qrcode({ order_id, fee, subject, return_url }: I_pay_qrcode_alipay) {
+    require_all({ fee });
     return this.sign('alipay.trade.page.pay', {
       notify_url: this.opt.notify_url,
       return_url: return_url || 'https://alipay.com',
       bizContent: {
-        out_trade_no: order_id || 'auto_id_' + nanoid(),
-        product_code: 'FAST_INSTANT_TRADE_PAY',
         total_amount: fee,
+        out_trade_no: order_id || random_oid(),
+        product_code: 'FAST_INSTANT_TRADE_PAY',
         subject: subject || 'Quick pay',
       },
     });
