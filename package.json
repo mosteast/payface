@@ -1,9 +1,9 @@
 {
-  "name": "@mosteast/xxx",
-  "description": "xxx",
-  "version": "0.0.1",
-  "homepage": "https://github.com/xxx/xxx#readme",
-  "repository": "github:xxx/xxx",
+  "name": "payface",
+  "description": "Payment interface for alipay and wechat",
+  "version": "0.0.2",
+  "homepage": "https://github.com/mosteast/payface#readme",
+  "repository": "github:mosteast/payface",
   "main": "build/index.js",
   "type": "build/index.d.ts",
   "files": [

@@ -29,7 +29,7 @@ export class Tenpay extends Base implements Payface {
   async pay_qrcode(): Promise<string> {
     let result = await this.sdk.getNativeUrl({
       // todo
-      product_id: '商品ID',
+      product_id: 'product id',
     });
 
     return result;
