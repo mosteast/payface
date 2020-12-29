@@ -1,9 +1,10 @@
 import AlipaySdk, { AlipaySdkConfig } from 'alipay-sdk';
 import { sign } from 'alipay-sdk/lib/util';
+import { nanoid } from 'nanoid';
 import { URLSearchParams } from 'url';
 import { Base } from './base';
 import { Invalid_argument_external } from './error/invalid_argument';
-import { Payface, T_opt_payface } from './payface';
+import { I_pay_qrcode, Payface, T_opt_payface } from './payface';
 
 export class Alipay extends Base implements Payface {
   protected opt!: T_opt_alipay;
@@ -31,23 +32,26 @@ export class Alipay extends Base implements Payface {
     return config.gateway + '?' + new URLSearchParams(data).toString();
   }
 
-  async pay_qrcode() {
+  async pay_qrcode({ order_id, fee, subject, return_url }: I_pay_qrcode_alipay) {
     return this.sign('alipay.trade.page.pay', {
-      // todo
-      notify_url: 'http://api.test.alipay.net/atinterface/receive_notify.htm',
-      return_url: 'https://xxx.com',
+      notify_url: this.opt.notify_url,
+      return_url: return_url || 'https://alipay.com',
       bizContent: {
-        out_trade_no: 'moonrating_test_' + Date.now(),
+        out_trade_no: order_id || 'auto_id_' + nanoid(),
         product_code: 'FAST_INSTANT_TRADE_PAY',
-        total_amount: 0.01,
-        subject: 'moonrating test',
+        total_amount: fee,
+        subject: subject || 'Quick pay',
       },
     });
   }
 }
 
 export interface T_opt_alipay extends T_opt_payface {
-  id: string
-  secret: string
+  id: string // appid 应用id
+  secret: string // app private key 应用私钥
   opt_common?: AlipaySdkConfig
+}
+
+export interface I_pay_qrcode_alipay extends I_pay_qrcode {
+  return_url?: string
 }
