@@ -1,5 +1,5 @@
 import { AlipaySdkConfig } from 'alipay-sdk';
-import { Base } from './Base';
+import { Base } from './base';
 import { Invalid_argument_external } from './error/invalid_argument';
 import { Payface, T_opt_payface } from './payface';
 
