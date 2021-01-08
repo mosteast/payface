@@ -17,8 +17,7 @@ export class Tenpay extends Base implements Payface {
       appid: opt.id,
       partnerKey: opt.secret,
       mchid: opt.mchid,
-      debug: opt.debug,
-    });
+    }, opt.debug);
   }
 
   protected validate_opt(opt: T_opt_tenpay) {
