@@ -9,6 +9,7 @@ export interface T_opt_payface {
   id?: string
   secret?: string
   notify_url: string
+  debug?: boolean
 }
 
 export interface I_pay_qrcode {
