@@ -39,6 +39,10 @@ export class Tenpay extends Base implements Payface {
 
     return code_url;
   }
+
+  verify_notify_sign(data: any): boolean {
+    return this.sdk._parse(data);
+  }
 }
 
 export interface T_opt_tenpay extends T_opt_payface {

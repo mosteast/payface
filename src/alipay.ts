@@ -38,6 +38,10 @@ export class Alipay extends Base implements Payface {
       },
     });
   }
+
+  verify_notify_sign(data: any): boolean {
+    return this.sdk.checkNotifySign(data);
+  }
 }
 
 export interface T_opt_alipay extends T_opt_payface {

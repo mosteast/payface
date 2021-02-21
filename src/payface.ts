@@ -3,6 +3,11 @@ export interface Payface {
    * Returns payment qrcode string (URL mostly)
    */
   pay_qrcode(...args: any[]): Promise<string>
+
+  /**
+   * Verify notify signature
+   */
+  verify_notify_sign(data: any): boolean
 }
 
 export interface T_opt_payface {
