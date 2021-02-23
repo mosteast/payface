@@ -49,6 +49,7 @@ export class Alipay extends Base implements Payface {
 export interface T_opt_alipay extends T_opt_payface {
   id: string // appid 应用id
   secret: string // app private key 应用私钥
+  alipay_pk: string // alipay public key 支付宝公钥
   opt_common?: AlipaySdkConfig
 }
 
