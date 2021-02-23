@@ -16,6 +16,7 @@ export class Alipay extends Base implements Payface {
     this.sdk = new AlipaySdk({
       appId: opt.id!,
       privateKey: opt.secret!,
+      alipayPublicKey: opt.alipay_pk!,
     });
   }
 
@@ -40,8 +41,6 @@ export class Alipay extends Base implements Payface {
   }
 
   verify_notify_sign(data: any): boolean {
-    // todo see: https://github.com/alipay/alipay-sdk-nodejs-all/issues/45
-    data = encodeURIComponent(data);
     return this.sdk.checkNotifySign(data);
   }
 }
