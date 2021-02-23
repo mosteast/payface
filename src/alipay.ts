@@ -40,7 +40,7 @@ export class Alipay extends Base implements Payface {
     });
   }
 
-  verify_notify_sign(data: any): boolean {
+  async verify_notify_sign(data: any): Promise<boolean> {
     return this.sdk.checkNotifySign(data);
   }
 }

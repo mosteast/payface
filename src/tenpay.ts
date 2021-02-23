@@ -40,8 +40,14 @@ export class Tenpay extends Base implements Payface {
     return code_url;
   }
 
-  verify_notify_sign(data: any): boolean {
-    return this.sdk._parse(data);
+  async verify_notify_sign(data: any): Promise<boolean> {
+    try {
+      // About this 'middleware_pay', @see:
+      // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
+      return !! this.sdk._parse(data, 'middleware_pay');
+    } catch (e) {
+      return false;
+    }
   }
 }
 

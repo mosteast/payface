@@ -7,7 +7,7 @@ export interface Payface {
   /**
    * Verify notify signature
    */
-  verify_notify_sign(data: any): boolean
+  verify_notify_sign(data: any): Promise<boolean>
 }
 
 export interface T_opt_payface {
