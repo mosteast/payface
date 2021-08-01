@@ -7,6 +7,6 @@ export class Base {
   }
 
   protected validate_opt({ id, secret, notify_url }: T_opt_payface) {
-    require_all({ id, secret, notify_url });
+    require_all({ id, secret });
   }
 }
