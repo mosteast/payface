@@ -11,7 +11,7 @@ import { random_oid } from './util';
 
 export class Alipay extends Base implements Payface {
   protected opt!: T_opt_alipay;
-  protected sdk!: AlipaySdk;
+  public sdk!: AlipaySdk;
 
   constructor(opt: T_opt_alipay) {
     super(opt);
@@ -116,9 +116,9 @@ export interface T_opt_alipay extends T_opt_payface {
 }
 
 export interface I_pay_qrcode_alipay extends I_pay_qrcode {
-  return_url?: string
+  return_url?: string;
 }
 
 export interface I_transfer_alipay extends I_transfer {
-  legal_name: string
+  legal_name: string;
 }

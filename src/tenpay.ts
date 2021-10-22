@@ -8,7 +8,7 @@ const TenpaySdk = require('tenpay');
 
 export class Tenpay extends Base implements Payface {
   protected opt!: T_opt_tenpay;
-  protected sdk!: any;
+  public sdk!: any;
 
   constructor(opt: T_opt_tenpay) {
     super(opt);
@@ -52,14 +52,14 @@ export class Tenpay extends Base implements Payface {
 }
 
 export interface T_opt_tenpay extends T_opt_payface {
-  id: string // appid 公众号ID
-  secret: string // partnerKey 微信支付安全密钥
-  mchid: string // mchid 微信商户号
-  opt_common?: AlipaySdkConfig
+  id: string; // appid 公众号ID
+  secret: string; // partnerKey 微信支付安全密钥
+  mchid: string; // mchid 微信商户号
+  opt_common?: AlipaySdkConfig;
 }
 
 export interface I_pay_qrcode_tenpay extends I_pay_qrcode {
-  product_id?: number
+  product_id?: number;
 }
 
 export function tenpay_fee(fee: number) {
