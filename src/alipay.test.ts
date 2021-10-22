@@ -55,5 +55,11 @@ describe('cert', () => {
     const r = await client.transfer({ fee: parseFloat(fee!) || 0.1, subject: 'Test order', legal_name, tid });
     expect(r).toBeTruthy();
   });
+
+  it('get_balance', async () => {
+    const r = await client.get_balance();
+    expect(r.total.length).toBeTruthy();
+    expect(r.frozen?.length).toBeTruthy();
+  });
 });
 

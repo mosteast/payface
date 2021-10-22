@@ -94,6 +94,19 @@ export class Alipay extends Base implements Payface {
     return true;
   }
 
+  async get_balance(): Promise<O_get_balance> {
+    const r: any = await this.sdk.exec('alipay.data.bill.balance.query');
+
+    if (r.status !== 'SUCCESS' && r.msg !== 'Success') {
+      throw new Api_error('Transfer rejected by Alipay: ' + JSON.stringify(r), r);
+    }
+
+    return {
+      total: r.totalAmount,
+      frozen: r.freezeAmount,
+    };
+  }
+
   async verify_notify_sign(data: any): Promise<boolean> {
     return this.sdk.checkNotifySign(data);
   }
@@ -121,4 +134,9 @@ export interface I_pay_qrcode_alipay extends I_pay_qrcode {
 
 export interface I_transfer_alipay extends I_transfer {
   legal_name: string;
+}
+
+export interface O_get_balance {
+  total: string;
+  frozen?: string;
 }
