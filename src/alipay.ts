@@ -98,7 +98,7 @@ export class Alipay extends Base implements Payface {
     const r: any = await this.sdk.exec('alipay.data.bill.balance.query');
 
     if (r.status !== 'SUCCESS' && r.msg !== 'Success') {
-      throw new Api_error('Transfer rejected by Alipay: ' + JSON.stringify(r), r);
+      throw new Api_error('Rejected by Alipay: ' + JSON.stringify(r), r);
     }
 
     return {
