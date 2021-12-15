@@ -49,11 +49,11 @@ export class Alipay extends Base implements Payface {
     return config.gateway + '?' + new URLSearchParams(data).toString();
   }
 
-  async pay_qrcode({ order_id, fee, subject, return_url }: I_pay_qrcode_alipay): Promise<string> {
+  async pay_qrcode({ order_id, fee, subject, return_url, qr_code_width }: I_pay_qrcode_alipay): Promise<string> {
     require_all({ fee });
 
     const notify_url = this.opt.notify_url;
-    if ( ! notify_url) { throw new Invalid_argument('Empty {notify_url}'); }
+    if (!notify_url) { throw new Invalid_argument('Empty {notify_url}'); }
 
     return this.sign('alipay.trade.page.pay', {
       notify_url: this.opt.notify_url,
@@ -63,6 +63,8 @@ export class Alipay extends Base implements Payface {
         out_trade_no: order_id || random_oid(),
         product_code: 'FAST_INSTANT_TRADE_PAY',
         subject: subject || 'Quick pay',
+        qr_pay_mode: 4,
+        qrcode_width: qr_code_width || 200,
       },
     });
   }
@@ -130,6 +132,7 @@ export interface T_opt_alipay extends T_opt_payface {
 
 export interface I_pay_qrcode_alipay extends I_pay_qrcode {
   return_url?: string;
+  qr_code_width?: number;
 }
 
 export interface I_transfer_alipay extends I_transfer {
