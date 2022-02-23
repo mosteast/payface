@@ -17,7 +17,7 @@ export interface T_opt_payface {
   debug?: boolean
 }
 
-export interface I_pay_qrcode {
+export interface I_pay {
   fee: number
   order_id?: string
   subject?: string
