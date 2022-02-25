@@ -5,6 +5,11 @@ export interface Payface {
   pay_qrcode(...args: any[]): Promise<string>
 
   /**
+   * Returns mobile web payment string (URL mostly)
+   */
+  pay_mobile_web(...args: any[]): Promise<string>
+
+  /**
    * Verify notify signature
    */
   verify_notify_sign(data: any): Promise<boolean>

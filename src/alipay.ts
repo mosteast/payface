@@ -6,7 +6,7 @@ import { Base } from './base';
 import { Api_error } from './error/api_error';
 import { Invalid_argument, Invalid_argument_external } from './error/invalid_argument';
 import { require_all } from './error/util/lack_argument';
-import { I_pay, I_transfer, Payface, T_opt_payface } from './payface';
+import { I_transfer, Payface, T_opt_payface } from './payface';
 import { random_oid } from './util';
 
 export class Alipay extends Base implements Payface {
@@ -49,15 +49,26 @@ export class Alipay extends Base implements Payface {
     return config.gateway + '?' + new URLSearchParams(data).toString();
   }
 
-  async pay_qrcode({ order_id, fee, subject, return_url, qrcode }: I_pay_qrcode_alipay): Promise<string> {
+  async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<string> {
+    const { qrcode } = opt;
+    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
+    opt.content = qrcode ? {
+      qr_pay_mode: 4,
+      qrcode_width: qrcode.width || 200,
+    } : {};
+    return this.pay_common(opt);
+  }
+
+  async pay_mobile_web(opt: I_pay_alipay): Promise<string> {
+    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
+    return this.pay_common(opt);
+  }
+
+  async pay_common({ order_id, fee, subject, return_url, content, product_code }: I_pay_alipay): Promise<string> {
     require_all({ fee });
 
     const notify_url = this.opt.notify_url;
     if (!notify_url) { throw new Invalid_argument('Empty {notify_url}'); }
-    const qrcode_config = qrcode ? {
-      qr_pay_mode: 4,
-      qrcode_width: qrcode.width || 200,
-    } : {}
 
     return this.sign('alipay.trade.page.pay', {
       notify_url: this.opt.notify_url,
@@ -67,7 +78,7 @@ export class Alipay extends Base implements Payface {
         out_trade_no: order_id || random_oid(),
         product_code: 'FAST_INSTANT_TRADE_PAY',
         subject: subject || 'Quick pay',
-        ...qrcode_config,
+        ...content,
       },
     });
   }
@@ -133,8 +144,15 @@ export interface T_opt_alipay extends T_opt_payface {
   opt_common?: AlipaySdkConfig
 }
 
-export interface I_pay_qrcode_alipay extends I_pay {
+export interface I_pay_alipay {
+  product_code?: 'TRANS_ACCOUNT_NO_PWD' | 'FAST_INSTANT_TRADE_PAY';
   return_url?: string;
+  content?: any;
+
+  [key: string]: any;
+}
+
+export interface I_pay_qrcode_alipay extends I_pay_alipay {
   qrcode?: {
     width?: number;
   };

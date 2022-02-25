@@ -8,12 +8,18 @@ describe('secret', () => {
   const alipay_pk = process.env.alipay_public_key;
   const notify_url = process.env.notify_url;
 
-  if ( ! key || ! secret || ! alipay_pk) {
+  if (!key || !secret || !alipay_pk) {
     console.warn('Require env: alipay_id, alipay_secret, alipay_pk');
     return;
   }
 
-  const client = new Alipay({ auth_type: N_alipay_auth_type.secret, id: key, secret, alipay_public_key: alipay_pk, notify_url: notify_url || 'https://payment.feature.giao.test.mosteast.com/payment/notify/aliapy' });
+  const client = new Alipay({
+    auth_type: N_alipay_auth_type.secret,
+    id: key,
+    secret,
+    alipay_public_key: alipay_pk,
+    notify_url: notify_url || 'https://payment.feature.giao.test.mosteast.com/payment/notify/aliapy',
+  });
 
   it('pay_qrcode() using secret', async () => {
     const r = await client.pay_qrcode({ fee: 0.1, order_id: 'test_' + nanoid(), subject: 'Test order' });
@@ -29,7 +35,7 @@ describe('cert', () => {
   const tid = process.env.alipay_tid!;
   const legal_name = process.env.alipay_legal_name!;
   const notify_url = process.env.notify_url;
-  if ( ! key || ! secret || ! tid || ! legal_name) {
+  if (!key || !secret || !tid || !legal_name) {
     console.warn('Require env: alipay_id, alipay_secret, alipay_tid, alipay_legal_name');
     return;
   }
@@ -63,3 +69,5 @@ describe('cert', () => {
   });
 });
 
+it('holder', async () => {
+});
