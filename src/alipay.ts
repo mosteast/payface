@@ -61,16 +61,26 @@ export class Alipay extends Base implements Payface {
 
   async pay_mobile_web(opt: I_pay_alipay): Promise<string> {
     opt.product_code = 'FAST_INSTANT_TRADE_PAY';
+    opt.method = 'alipay.trade.wap.pay';
     return this.pay_common(opt);
   }
 
-  async pay_common({ order_id, fee, subject, return_url, content, product_code }: I_pay_alipay): Promise<string> {
+  async pay_common({
+    order_id,
+    fee,
+    subject,
+    return_url,
+    content,
+    product_code,
+    method,
+  }: I_pay_alipay): Promise<string> {
     require_all({ fee });
 
     const notify_url = this.opt.notify_url;
     if (!notify_url) { throw new Invalid_argument('Empty {notify_url}'); }
+    method = method || 'alipay.trade.page.pay';
 
-    return this.sign('alipay.trade.page.pay', {
+    return this.sign(method, {
       notify_url: this.opt.notify_url,
       return_url: return_url || 'https://alipay.com',
       bizContent: {
@@ -145,6 +155,7 @@ export interface T_opt_alipay extends T_opt_payface {
 }
 
 export interface I_pay_alipay {
+  method?: string;
   product_code?: 'TRANS_ACCOUNT_NO_PWD' | 'FAST_INSTANT_TRADE_PAY';
   return_url?: string;
   content?: any;
