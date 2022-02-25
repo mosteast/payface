@@ -52,10 +52,10 @@ export class Alipay extends Base implements Payface {
   async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<string> {
     const { qrcode } = opt;
     opt.product_code = 'FAST_INSTANT_TRADE_PAY';
-    opt.content = qrcode ? {
+    opt.content = {
       qr_pay_mode: 4,
-      qrcode_width: qrcode.width || 200,
-    } : {};
+      qrcode_width: qrcode?.width || 200,
+    };
     return this.pay_common(opt);
   }
 
