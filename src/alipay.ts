@@ -76,7 +76,7 @@ export class Alipay extends Base implements Payface {
       bizContent: {
         total_amount: fee,
         out_trade_no: order_id || random_oid(),
-        product_code: 'FAST_INSTANT_TRADE_PAY',
+        product_code,
         subject: subject || 'Quick pay',
         ...content,
       },
