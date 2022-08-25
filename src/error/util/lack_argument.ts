@@ -1,6 +1,6 @@
-import { keys } from 'lodash';
-import { T_object } from '../../type';
-import { Invalid_argument } from '../invalid_argument';
+import { keys } from "lodash";
+import { T_object } from "../../type";
+import { Invalid_argument } from "../invalid_argument";
 
 export function require_all(args: T_object): void {
   const lack = [];
@@ -13,7 +13,9 @@ export function require_all(args: T_object): void {
   }
 
   if (lack.length) {
-    throw new Invalid_argument('Missing following arguments: ' + JSON.stringify(lack));
+    throw new Invalid_argument(
+      "Missing following arguments: " + JSON.stringify(lack)
+    );
   }
 }
 
@@ -28,7 +30,9 @@ export function require_any(args: T_object): void {
     }
   }
 
-  if ( ! valid) {
-    throw new Invalid_argument('Missing one of these arguments: ' + JSON.stringify(keys(args)));
+  if (!valid) {
+    throw new Invalid_argument(
+      "Missing one of these arguments: " + JSON.stringify(keys(args))
+    );
   }
 }

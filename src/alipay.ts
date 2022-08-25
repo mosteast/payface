@@ -1,13 +1,16 @@
-import AlipaySdk, { AlipaySdkConfig } from 'alipay-sdk';
-import { sign } from 'alipay-sdk/lib/util';
-import { values } from 'lodash';
-import { URLSearchParams } from 'url';
-import { Base } from './base';
-import { Api_error } from './error/api_error';
-import { Invalid_argument, Invalid_argument_external } from './error/invalid_argument';
-import { require_all } from './error/util/lack_argument';
-import { I_transfer, Payface, T_opt_payface } from './payface';
-import { random_oid } from './util';
+import AlipaySdk, { AlipaySdkConfig } from "alipay-sdk";
+import { sign } from "alipay-sdk/lib/util";
+import { values } from "lodash";
+import { URLSearchParams } from "url";
+import { Base } from "./base";
+import { Api_error } from "./error/api_error";
+import {
+  Invalid_argument,
+  Invalid_argument_external,
+} from "./error/invalid_argument";
+import { require_all } from "./error/util/lack_argument";
+import { I_transfer, Payface, T_opt_payface } from "./payface";
+import { random_oid } from "./util";
 
 export class Alipay extends Base implements Payface {
   public sdk!: AlipaySdk;
@@ -16,7 +19,15 @@ export class Alipay extends Base implements Payface {
   constructor(opt: T_opt_alipay) {
     super(opt);
     this.opt = opt;
-    const { id, secret, alipay_public_cert, alipay_root_cert, alipay_public_key, app_cert, auth_type } = opt;
+    const {
+      id,
+      secret,
+      alipay_public_cert,
+      alipay_root_cert,
+      alipay_public_key,
+      app_cert,
+      auth_type,
+    } = opt;
     switch (auth_type) {
       case N_alipay_auth_type.secret:
         require_all({ id, secret, alipay_public_key });
@@ -27,7 +38,13 @@ export class Alipay extends Base implements Payface {
         });
         break;
       case N_alipay_auth_type.cert:
-        require_all({ id, secret, alipay_root_cert, alipay_public_cert, app_cert });
+        require_all({
+          id,
+          secret,
+          alipay_root_cert,
+          alipay_public_cert,
+          app_cert,
+        });
 
         this.sdk = new AlipaySdk({
           appId: id,
@@ -38,20 +55,22 @@ export class Alipay extends Base implements Payface {
         });
         break;
       default:
-        throw new Invalid_argument_external('Invalid {auth_type}, should be one of: ' + JSON.stringify(values(N_alipay_auth_type)));
+        throw new Invalid_argument_external(
+          "Invalid {auth_type}, should be one of: " +
+            JSON.stringify(values(N_alipay_auth_type))
+        );
     }
-
   }
 
   sign(action: string, params: any): string {
     const config = this.sdk.config;
     const data = sign(action, params, config);
-    return config.gateway + '?' + new URLSearchParams(data).toString();
+    return config.gateway + "?" + new URLSearchParams(data).toString();
   }
 
   async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<string> {
     const { qrcode } = opt;
-    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
+    opt.product_code = "FAST_INSTANT_TRADE_PAY";
     opt.content = {
       qr_pay_mode: 4,
       qrcode_width: qrcode?.width || 200,
@@ -60,8 +79,8 @@ export class Alipay extends Base implements Payface {
   }
 
   async pay_mobile_web(opt: I_pay_alipay): Promise<string> {
-    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
-    opt.method = 'alipay.trade.wap.pay';
+    opt.product_code = "FAST_INSTANT_TRADE_PAY";
+    opt.method = "alipay.trade.wap.pay";
     return this.pay_common(opt);
   }
 
@@ -77,17 +96,19 @@ export class Alipay extends Base implements Payface {
     require_all({ fee });
 
     const notify_url = this.opt.notify_url;
-    if (!notify_url) { throw new Invalid_argument('Empty {notify_url}'); }
-    method = method || 'alipay.trade.page.pay';
+    if (!notify_url) {
+      throw new Invalid_argument("Empty {notify_url}");
+    }
+    method = method || "alipay.trade.page.pay";
 
     return this.sign(method, {
       notify_url: this.opt.notify_url,
-      return_url: return_url || 'https://alipay.com',
+      return_url: return_url || "https://alipay.com",
       bizContent: {
         total_amount: fee,
         out_trade_no: order_id || random_oid(),
         product_code,
-        subject: subject || 'Quick pay',
+        subject: subject || "Quick pay",
         ...content,
       },
     });
@@ -96,35 +117,44 @@ export class Alipay extends Base implements Payface {
   /**
    * Transfer money to an alipay account (could withdraw money for user)
    */
-  async transfer({ legal_name, fee, tid, order_id, subject }: I_transfer_alipay): Promise<boolean> {
+  async transfer({
+    legal_name,
+    fee,
+    tid,
+    order_id,
+    subject,
+  }: I_transfer_alipay): Promise<boolean> {
     require_all({ fee });
-    const r: any = await this.sdk.exec('alipay.fund.trans.uni.transfer', {
+    const r: any = await this.sdk.exec("alipay.fund.trans.uni.transfer", {
       bizContent: {
         out_biz_no: order_id || random_oid(),
         trans_amount: fee,
-        product_code: 'TRANS_ACCOUNT_NO_PWD',
+        product_code: "TRANS_ACCOUNT_NO_PWD",
         payee_info: {
-          identity_type: 'ALIPAY_LOGON_ID',
+          identity_type: "ALIPAY_LOGON_ID",
           identity: tid,
           name: legal_name,
         },
-        order_title: subject || 'Direct Transfer',
-        biz_scene: 'DIRECT_TRANSFER',
+        order_title: subject || "Direct Transfer",
+        biz_scene: "DIRECT_TRANSFER",
       },
     });
 
-    if (r.status !== 'SUCCESS') {
-      throw new Api_error('Transfer rejected by Alipay: ' + JSON.stringify(r), r);
+    if (r.status !== "SUCCESS") {
+      throw new Api_error(
+        "Transfer rejected by Alipay: " + JSON.stringify(r),
+        r
+      );
     }
 
     return true;
   }
 
   async get_balance(): Promise<O_get_balance> {
-    const r: any = await this.sdk.exec('alipay.data.bill.balance.query');
+    const r: any = await this.sdk.exec("alipay.data.bill.balance.query");
 
-    if (r.status !== 'SUCCESS' && r.msg !== 'Success') {
-      throw new Api_error('Rejected by Alipay: ' + JSON.stringify(r), r);
+    if (r.status !== "SUCCESS" && r.msg !== "Success") {
+      throw new Api_error("Rejected by Alipay: " + JSON.stringify(r), r);
     }
 
     return {
@@ -139,24 +169,24 @@ export class Alipay extends Base implements Payface {
 }
 
 export enum N_alipay_auth_type {
-  secret = 'secret',
-  cert   = 'cert',
+  secret = "secret",
+  cert = "cert",
 }
 
 export interface T_opt_alipay extends T_opt_payface {
-  id: string // appid 应用id
-  secret: string // app private key 应用私钥
-  auth_type: N_alipay_auth_type,
-  alipay_public_key?: string  // alipay public key 支付宝公钥
-  alipay_root_cert?: string | Buffer // alipay root cert content 支付宝根证书内容
-  alipay_public_cert?: string | Buffer // alipay public cert content 支付宝公钥证书内容
-  app_cert?: string | Buffer // app cert content 应用证书内容
-  opt_common?: AlipaySdkConfig
+  id: string; // appid 应用id
+  secret: string; // app private key 应用私钥
+  auth_type: N_alipay_auth_type;
+  alipay_public_key?: string; // alipay public key 支付宝公钥
+  alipay_root_cert?: string | Buffer; // alipay root cert content 支付宝根证书内容
+  alipay_public_cert?: string | Buffer; // alipay public cert content 支付宝公钥证书内容
+  app_cert?: string | Buffer; // app cert content 应用证书内容
+  opt_common?: AlipaySdkConfig;
 }
 
 export interface I_pay_alipay {
   method?: string;
-  product_code?: 'TRANS_ACCOUNT_NO_PWD' | 'FAST_INSTANT_TRADE_PAY';
+  product_code?: "TRANS_ACCOUNT_NO_PWD" | "FAST_INSTANT_TRADE_PAY";
   return_url?: string;
   content?: any;
 

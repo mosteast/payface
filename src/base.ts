@@ -1,5 +1,5 @@
-import { require_all } from './error/util/lack_argument';
-import { T_opt_payface } from './payface';
+import { require_all } from "./error/util/lack_argument";
+import { T_opt_payface } from "./payface";
 
 export class Base {
   constructor(opt: T_opt_payface) {

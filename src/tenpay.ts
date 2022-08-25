@@ -1,11 +1,11 @@
-import { AlipaySdkConfig } from 'alipay-sdk';
-import { Optional } from 'utility-types';
-import { Base } from './base';
-import { require_all } from './error/util/lack_argument';
-import { I_pay, Payface, T_opt_payface } from './payface';
-import { random_oid } from './util';
+import { AlipaySdkConfig } from "alipay-sdk";
+import { Optional } from "utility-types";
+import { Base } from "./base";
+import { require_all } from "./error/util/lack_argument";
+import { I_pay, Payface, T_opt_payface } from "./payface";
+import { random_oid } from "./util";
 
-const TenpaySdk = require('tenpay');
+const TenpaySdk = require("tenpay");
 
 export class Tenpay extends Base implements Payface {
   public sdk!: any;
@@ -14,31 +14,40 @@ export class Tenpay extends Base implements Payface {
   constructor(opt: T_opt_tenpay) {
     super(opt);
     this.opt = opt;
-    this.sdk = new TenpaySdk({
-      appid: opt.id,
-      partnerKey: opt.secret,
-      mchid: opt.mchid,
-    }, opt.debug);
+    this.sdk = new TenpaySdk(
+      {
+        appid: opt.id,
+        partnerKey: opt.secret,
+        mchid: opt.mchid,
+      },
+      opt.debug
+    );
   }
 
   async pay_qrcode(opt: I_pay_qrcode_tenpay): Promise<string> {
-    opt.trade_type = 'NATIVE';
+    opt.trade_type = "NATIVE";
     return this.pay_common(opt as I_pay_common);
   }
 
   async pay_mobile_web(opt: I_pay_mobile_web_tenpay): Promise<string> {
-    opt.trade_type = 'MWEB';
+    opt.trade_type = "MWEB";
     return this.pay_common(opt as I_pay_common);
   }
 
-  async pay_common({ order_id, subject, fee, product_id, trade_type }: I_pay_common): Promise<string> {
+  async pay_common({
+    order_id,
+    subject,
+    fee,
+    product_id,
+    trade_type,
+  }: I_pay_common): Promise<string> {
     require_all({ fee });
 
     let { code_url } = await this.sdk.unifiedOrder({
       out_trade_no: order_id || random_oid(),
-      body: subject || 'Quick pay',
+      body: subject || "Quick pay",
       total_fee: tenpay_fee(fee),
-      product_id: product_id || 'default',
+      product_id: product_id || "default",
       notify_url: this.opt.notify_url,
       trade_type,
     });
@@ -50,7 +59,7 @@ export class Tenpay extends Base implements Payface {
     try {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      return !!this.sdk._parse(data, 'middleware_pay');
+      return !!this.sdk._parse(data, "middleware_pay");
     } catch (e) {
       return false;
     }
@@ -72,16 +81,17 @@ export interface T_opt_tenpay extends T_opt_payface {
 export interface I_pay_common extends I_pay {
   client_ip?: string;
   product_id?: number;
-  trade_type: 'NATIVE' | 'MWEB';
+  trade_type: "NATIVE" | "MWEB";
 }
 
-export interface I_pay_qrcode_tenpay extends Optional<I_pay_common, 'trade_type'> {}
+export interface I_pay_qrcode_tenpay
+  extends Optional<I_pay_common, "trade_type"> {}
 
-export interface I_pay_mobile_web_tenpay extends Optional<I_pay_common, 'trade_type'> {
+export interface I_pay_mobile_web_tenpay
+  extends Optional<I_pay_common, "trade_type"> {
   client_ip: string;
 }
 
 export function tenpay_fee(fee: number) {
   return fee * 100;
 }
-

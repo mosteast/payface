@@ -3,6 +3,7 @@
 > Please fill following fields with placehold "{xxx}"
 
 ## Project Information
+
 - Main problem this package solves: {xxx}.
 - Main language: {Language}.
 
@@ -12,7 +13,7 @@
 npm i # Install.
 npm t # Run test first.
 npm start # Start development.
-``` 
+```
 
 ### {Can do this}
 
@@ -21,5 +22,3 @@ npm start # Start development.
 ### {Can do that}
 
 {Example}
-
-
