@@ -40,6 +40,7 @@ export class Tenpay extends Base implements Payface {
     fee,
     product_id,
     trade_type,
+    client_ip,
   }: I_pay_common): Promise<string> {
     require_all({ fee });
 
@@ -50,6 +51,7 @@ export class Tenpay extends Base implements Payface {
       product_id: product_id || "default",
       notify_url: this.opt.notify_url,
       trade_type,
+      spbill_create_ip: client_ip,
     });
 
     return code_url;
