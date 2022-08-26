@@ -84,15 +84,13 @@ export class Alipay extends Base implements Payface {
     return this.pay_common(opt);
   }
 
-  async pay_common({
-    order_id,
-    fee,
-    subject,
-    return_url,
-    content,
-    product_code,
-    method,
-  }: I_pay_alipay): Promise<string> {
+  async pay_app(opt: I_pay_alipay): Promise<string> {
+    return this.sdk.exec("alipay.trade.app.pay", this.build_params(opt));
+  }
+
+  async pay_common(opt: I_pay_alipay): Promise<string> {
+    const { fee } = opt;
+    let { method } = opt;
     require_all({ fee });
 
     const notify_url = this.opt.notify_url;
@@ -101,7 +99,18 @@ export class Alipay extends Base implements Payface {
     }
     method = method || "alipay.trade.page.pay";
 
-    return this.sign(method, {
+    return this.sign(method, this.build_params(opt));
+  }
+
+  build_params({
+    order_id,
+    fee,
+    subject,
+    return_url,
+    content,
+    product_code,
+  }: I_pay_alipay) {
+    return {
       notify_url: this.opt.notify_url,
       return_url: return_url || "https://alipay.com",
       bizContent: {
@@ -111,7 +120,7 @@ export class Alipay extends Base implements Payface {
         subject: subject || "Quick pay",
         ...content,
       },
-    });
+    };
   }
 
   /**

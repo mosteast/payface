@@ -66,7 +66,7 @@ describe("cert", () => {
 
   const client = new Alipay(opt);
 
-  it("pay_qrcode()", async () => {
+  it("pay_qrcode", async () => {
     const r = await client.pay_qrcode({
       fee: 0.1,
       order_id: "test_" + nanoid(),
@@ -75,7 +75,7 @@ describe("cert", () => {
     console.info("Payment URL: \n", r);
   });
 
-  it("pay_mobile_web()", async () => {
+  it("pay_mobile_web", async () => {
     const r = await client.pay_mobile_web({
       fee: 0.1,
       order_id: "test_" + nanoid(),
@@ -84,7 +84,16 @@ describe("cert", () => {
     console.info("Payment URL: \n", r);
   });
 
-  it("transfer()", async () => {
+  // it("pay_app", async () => {
+  //   const r = await client.pay_app({
+  //     fee: 0.1,
+  //     order_id: "test_" + nanoid(),
+  //     subject: "Test order",
+  //   });
+  //   console.info("Payment URL: \n", r);
+  // });
+
+  it("transfer", async () => {
     const r = await client.transfer({
       fee: parseFloat(fee!) || 0.1,
       subject: "Test order",
