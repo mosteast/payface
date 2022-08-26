@@ -1,4 +1,5 @@
 import AlipaySdk, { AlipaySdkConfig } from "alipay-sdk";
+import AlipayFormData from "alipay-sdk/lib/form";
 import { sign } from "alipay-sdk/lib/util";
 import { values } from "lodash";
 import { URLSearchParams } from "url";
@@ -85,7 +86,14 @@ export class Alipay extends Base implements Payface {
   }
 
   async pay_app(opt: I_pay_alipay): Promise<string> {
-    return this.sdk.exec("alipay.trade.app.pay", this.build_params(opt));
+    const p = this.build_params(opt);
+    p.bizContent.ProductCode = "QUICK_MSECURITY_PAY";
+    const formData = new AlipayFormData();
+    formData.setMethod("get");
+    formData.addField("bizContent", p.bizContent);
+    formData.addField("notifyUrl", p.notify_url);
+    const r = await this.sdk.exec("alipay.trade.app.pay", {}, { formData });
+    return r as string; // https://openapi.alipay.com/gateway.do?app_cert_sn=31...
   }
 
   async pay_common(opt: I_pay_alipay): Promise<string> {

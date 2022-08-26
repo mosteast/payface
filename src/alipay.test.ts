@@ -84,14 +84,14 @@ describe("cert", () => {
     console.info("Payment URL: \n", r);
   });
 
-  // it("pay_app", async () => {
-  //   const r = await client.pay_app({
-  //     fee: 0.1,
-  //     order_id: "test_" + nanoid(),
-  //     subject: "Test order",
-  //   });
-  //   console.info("Payment URL: \n", r);
-  // });
+  it("pay_app", async () => {
+    const r = await client.pay_app({
+      fee: 0.1,
+      order_id: "test_" + nanoid(),
+      subject: "Test order",
+    });
+    console.info("Payment URL: \n", r);
+  });
 
   it("transfer", async () => {
     const r = await client.transfer({

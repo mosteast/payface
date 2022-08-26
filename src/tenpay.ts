@@ -1,3 +1,4 @@
+import { E } from "@mosteast/e";
 import { AlipaySdkConfig } from "alipay-sdk";
 import { Optional } from "utility-types";
 import { Base } from "./base";
@@ -43,8 +44,8 @@ export class Tenpay extends Base implements Payface {
     client_ip,
   }: I_pay_common): Promise<string> {
     require_all({ fee });
-
-    let { code_url } = await this.sdk.unifiedOrder({
+    let url: string;
+    const r = await this.sdk.unifiedOrder({
       out_trade_no: order_id || random_oid(),
       body: subject || "Quick pay",
       total_fee: tenpay_fee(fee),
@@ -54,7 +55,22 @@ export class Tenpay extends Base implements Payface {
       spbill_create_ip: client_ip,
     });
 
-    return code_url;
+    switch (trade_type) {
+      case "MWEB":
+        url = r.mweb_url;
+        break;
+      default:
+        url = r.code_url;
+    }
+
+    if (!url) {
+      throw new E(
+        `Could not get url from result for trade_type: "${trade_type}", result: `,
+        r
+      );
+    }
+
+    return url;
   }
 
   async verify_notify_sign(data: any): Promise<boolean> {
