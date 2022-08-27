@@ -35,6 +35,11 @@ export class Tenpay extends Base implements Payface {
     return this.pay_common(opt as I_pay_common);
   }
 
+  async pay_app(opt: I_pay_mobile_web_tenpay): Promise<string> {
+    opt.trade_type = "APP";
+    return this.pay_common(opt as I_pay_common);
+  }
+
   async pay_common({
     order_id,
     subject,
@@ -99,7 +104,7 @@ export interface T_opt_tenpay extends T_opt_payface {
 export interface I_pay_common extends I_pay {
   client_ip?: string;
   product_id?: number;
-  trade_type: "NATIVE" | "MWEB";
+  trade_type: "NATIVE" | "MWEB" | "APP";
 }
 
 export interface I_pay_qrcode_tenpay
