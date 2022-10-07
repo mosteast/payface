@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
 import { Alipay, N_alipay_auth_type } from "./alipay";
+import { Verification_error } from "./error/verification_error";
 
 describe("secret", () => {
   const key = process.env.alipay_id;
@@ -107,6 +108,24 @@ describe("cert", () => {
     const r = await client.get_balance();
     expect(r.total.length).toBeTruthy();
     expect(r.frozen?.length).toBeTruthy();
+  });
+
+  describe("order", () => {
+    const order_id = process.env.alipay_order_id;
+    if (!order_id) {
+      console.warn("Require env: alipay_order_id");
+      return;
+    }
+    it("query", async () => {
+      const r = await client.query({ order_id });
+      expect(r.code).toBeTruthy();
+    });
+    it("verify", async () => {
+      await expect(client.verify({ order_id })).resolves.not.toThrow();
+      await expect(
+        client.verify({ order_id: "invalid_order_90971234" })
+      ).rejects.toThrow(Verification_error);
+    });
   });
 });
 

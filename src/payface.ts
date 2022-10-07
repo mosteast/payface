@@ -13,6 +13,16 @@ export interface Payface {
    * Verify notify signature
    */
   verify_notify_sign(data: any): Promise<boolean>;
+
+  /**
+   * Query raw order data
+   */
+  query<T = any>(opt: I_query): Promise<T>;
+
+  /**
+   * Verify by order unique id
+   */
+  verify(opt: I_verify): Promise<void>;
 }
 
 export interface T_opt_payface {
@@ -35,3 +45,9 @@ export interface I_transfer {
   order_id?: string;
   subject?: string;
 }
+
+export interface I_query {
+  order_id: string;
+}
+
+export interface I_verify extends I_query {}

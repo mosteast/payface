@@ -1,7 +1,10 @@
 import { nanoid } from "nanoid";
+import { Verification_error } from "./error/verification_error";
 import { Tenpay } from "./tenpay";
 
-beforeEach(() => {
+let client: Tenpay;
+
+describe("tenpay", () => {
   const id = process.env.tenpay_id;
   const secret = process.env.tenpay_secret;
   const mchid = process.env.tenpay_mchid;
@@ -10,6 +13,13 @@ beforeEach(() => {
     console.warn("Empty env: tenpay_id or tenpay_secret or tenpay_mchid");
     return;
   }
+
+  client = new Tenpay({
+    id,
+    secret,
+    mchid,
+    notify_url: "https://example.com",
+  });
 
   it("pay_qrcode", async () => {
     const row = new Tenpay({
@@ -28,13 +38,7 @@ beforeEach(() => {
   });
 
   it("pay_qrcode", async () => {
-    const row = new Tenpay({
-      id,
-      secret,
-      mchid,
-      notify_url: "https://example.com",
-    });
-    const r = await row.pay_mobile_web({
+    const r = await client.pay_mobile_web({
       fee: 0.1,
       order_id: "test_" + nanoid(),
       subject: "Test order",
@@ -59,5 +63,24 @@ beforeEach(() => {
     });
     console.info("Payment url:", r);
     expect(r).toBeTruthy();
+  });
+
+  describe("order", () => {
+    const order_id = process.env.tenpay_order_id;
+    if (!order_id) {
+      console.warn("Require env: tenpay_order_id");
+      return;
+    }
+    it("query", async () => {
+      const r = await client.query({ order_id });
+      expect(r.result_code).toBeTruthy();
+    });
+
+    it("verify", async () => {
+      await expect(client.verify({ order_id })).resolves.not.toThrow();
+      await expect(
+        client.verify({ order_id: "invalid_order_90971234" })
+      ).rejects.toThrow(Verification_error);
+    });
   });
 });

@@ -3,7 +3,8 @@ import { AlipaySdkConfig } from "alipay-sdk";
 import { Optional } from "utility-types";
 import { Base } from "./base";
 import { require_all } from "./error/util/lack_argument";
-import { I_pay, Payface, T_opt_payface } from "./payface";
+import { Verification_error } from "./error/verification_error";
+import { I_pay, I_query, I_verify, Payface, T_opt_payface } from "./payface";
 import { random_oid } from "./util";
 
 const TenpaySdk = require("tenpay");
@@ -86,6 +87,27 @@ export class Tenpay extends Base implements Payface {
     } catch (e) {
       return false;
     }
+  }
+
+  async query<T = any>({ order_id }: I_query): Promise<T> {
+    return this.sdk.orderQuery({
+      out_trade_no: order_id,
+    });
+  }
+
+  async verify<T = any>(opt: I_verify): Promise<T> {
+    let r;
+    try {
+      r = await this.query(opt);
+    } catch (e: any) {
+      throw new Verification_error(e);
+    }
+
+    if (r.result_code.toLowerCase() !== "success") {
+      throw new Verification_error(r);
+    }
+
+    return r;
   }
 
   protected validate_opt(opt: T_opt_tenpay) {

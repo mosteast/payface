@@ -10,7 +10,14 @@ import {
   Invalid_argument_external,
 } from "./error/invalid_argument";
 import { require_all } from "./error/util/lack_argument";
-import { I_transfer, Payface, T_opt_payface } from "./payface";
+import { Verification_error } from "./error/verification_error";
+import {
+  I_query,
+  I_transfer,
+  I_verify,
+  Payface,
+  T_opt_payface,
+} from "./payface";
 import { random_oid } from "./util";
 
 export class Alipay extends Base implements Payface {
@@ -182,6 +189,23 @@ export class Alipay extends Base implements Payface {
 
   async verify_notify_sign(data: any): Promise<boolean> {
     return this.sdk.checkNotifySign(data);
+  }
+
+  async query<T = any>({ order_id }: I_query): Promise<T> {
+    return this.sdk.exec("alipay.trade.query", {
+      bizContent: {
+        out_trade_no: order_id,
+      },
+    });
+  }
+
+  async verify<T = any>(opt: I_verify): Promise<T> {
+    const r = await this.query(opt);
+    if (r.msg.toLowerCase() !== "success") {
+      throw new Verification_error(r);
+    }
+
+    return r;
   }
 }
 

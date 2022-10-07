@@ -3,4 +3,5 @@ module.exports = {
   testEnvironment: "node",
   transformIgnorePatterns: ["node_modules/(?!@ngrx|(?!deck.gl)|ng-dynamic)"],
   testPathIgnorePatterns: ["/node_modules/", "/build/", "/dist/"],
+  setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
 };
