@@ -1,11 +1,20 @@
 import { E } from "@mosteast/e";
 import { AlipaySdkConfig } from "alipay-sdk";
+import { parse } from "date-fns";
 import { Optional } from "utility-types";
 import { Base } from "./base";
 import { require_all } from "./error/util/lack_argument";
 import { Verification_error } from "./error/verification_error";
-import { I_pay, I_query, I_verify, Payface, T_opt_payface } from "./payface";
-import { random_oid } from "./util";
+import { n, round_money } from "./lib/math";
+import {
+  I_pay,
+  I_query,
+  I_verify,
+  Payface,
+  T_opt_payface,
+  T_receipt,
+} from "./payface";
+import { random_unique } from "./util";
 
 const TenpaySdk = require("tenpay");
 
@@ -42,7 +51,7 @@ export class Tenpay extends Base implements Payface {
   }
 
   async pay_common({
-    order_id,
+    unique,
     subject,
     fee,
     product_id,
@@ -52,7 +61,7 @@ export class Tenpay extends Base implements Payface {
     require_all({ fee });
     let url: string;
     const r = await this.sdk.unifiedOrder({
-      out_trade_no: order_id || random_oid(),
+      out_trade_no: unique || random_unique(),
       body: subject || "Quick pay",
       total_fee: tenpay_fee(fee),
       product_id: product_id || "default",
@@ -89,13 +98,35 @@ export class Tenpay extends Base implements Payface {
     }
   }
 
-  async query<T = any>({ order_id }: I_query): Promise<T> {
-    return this.sdk.orderQuery({
-      out_trade_no: order_id,
-    });
+  async query({
+    unique,
+  }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
+    const raw = (await this.sdk.orderQuery({
+      out_trade_no: unique,
+    })) as T_order_tenpay;
+
+    if (!raw) {
+      return;
+    }
+
+    let patch: Partial<T_receipt<T_order_tenpay>> = {};
+    const ok = raw.result_code.toLowerCase() === "success";
+    if (ok) {
+      patch = {
+        unique: raw.out_trade_no,
+        fee: round_money(n(raw.cash_fee).div(100)).toString(),
+        created_at: parse(
+          raw.time_end,
+          "yyyyMMddHHmmss",
+          new Date()
+        ).toISOString(),
+      };
+    }
+
+    return { ok, raw, ...patch } as T_receipt<T_order_tenpay>;
   }
 
-  async verify<T = any>(opt: I_verify): Promise<T> {
+  async verify(opt: I_verify): Promise<T_receipt<T_order_tenpay>> {
     let r;
     try {
       r = await this.query(opt);
@@ -103,7 +134,7 @@ export class Tenpay extends Base implements Payface {
       throw new Verification_error(e);
     }
 
-    if (r.result_code.toLowerCase() !== "success") {
+    if (!r?.ok) {
       throw new Verification_error(r);
     }
 
@@ -139,4 +170,54 @@ export interface I_pay_mobile_web_tenpay
 
 export function tenpay_fee(fee: number) {
   return fee * 100;
+}
+
+/**
+ * Example:
+ * {
+ *   "return_code": "SUCCESS",
+ *   "return_msg": "OK",
+ *   "result_code": "SUCCESS",
+ *   "mch_id": "1373091502",
+ *   "appid": "wx41d141be52130624",
+ *   "openid": "oIYGjt4kQCrCBG4kiolES4fjJzcw",
+ *   "is_subscribe": "N",
+ *   "trade_type": "NATIVE",
+ *   "trade_state": "SUCCESS",
+ *   "bank_type": "OTHERS",
+ *   "total_fee": "4900",
+ *   "fee_type": "CNY",
+ *   "cash_fee": "4900",
+ *   "cash_fee_type": "CNY",
+ *   "transaction_id": "4200000404201910288390439123",
+ *   "out_trade_no": "B3KH5937KT7UH13286UT3PH0PT84",
+ *   "attach": "",
+ *   "time_end": "20191028153408",
+ *   "trade_state_desc": "支付成功",
+ *   "nonce_str": "kPkI21nT5PeiNiwW",
+ *   "sign": "0455A09561E1FDA27043453E1A36AD2B"
+ * }
+ */
+export interface T_order_tenpay {
+  return_code: string;
+  return_msg: string;
+  result_code: string;
+  mch_id: string;
+  appid: string;
+  openid: string;
+  is_subscribe: string;
+  trade_type: string;
+  trade_state: string;
+  bank_type: string;
+  total_fee: string;
+  fee_type: string;
+  cash_fee: string;
+  cash_fee_type: string;
+  transaction_id: string;
+  out_trade_no: string;
+  attach: string;
+  time_end: string;
+  trade_state_desc: string;
+  nonce_str: string;
+  sign: string;
 }

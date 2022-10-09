@@ -30,7 +30,7 @@ describe("tenpay", () => {
     });
     const r = await row.pay_qrcode({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
     });
     console.info("Payment url:", r);
@@ -40,7 +40,7 @@ describe("tenpay", () => {
   it("pay_qrcode", async () => {
     const r = await client.pay_mobile_web({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
       client_ip: "123.139.93.107",
     });
@@ -57,7 +57,7 @@ describe("tenpay", () => {
     });
     const r = await row.pay_app({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
       client_ip: "123.139.93.107",
     });
@@ -66,20 +66,23 @@ describe("tenpay", () => {
   });
 
   describe("order", () => {
-    const order_id = process.env.tenpay_order_id;
-    if (!order_id) {
+    const unique = process.env.tenpay_order_id;
+    if (!unique) {
       console.warn("Require env: tenpay_order_id");
       return;
     }
     it("query", async () => {
-      const r = await client.query({ order_id });
-      expect(r.result_code).toBeTruthy();
+      const r = await client.query({ unique });
+      expect(r?.ok).toBeTruthy();
+      expect(r?.unique).toBeTruthy();
+      expect(r?.created_at).toBeTruthy();
+      expect(r?.fee).toBeTruthy();
     });
 
     it("verify", async () => {
-      await expect(client.verify({ order_id })).resolves.not.toThrow();
+      await expect(client.verify({ unique })).resolves.not.toThrow();
       await expect(
-        client.verify({ order_id: "invalid_order_90971234" })
+        client.verify({ unique: "invalid_order_90971234" })
       ).rejects.toThrow(Verification_error);
     });
   });

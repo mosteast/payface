@@ -27,7 +27,7 @@ describe("secret", () => {
   it("pay_qrcode() using secret", async () => {
     const r = await client.pay_qrcode({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
     });
     console.info("Payment url:", r);
@@ -70,7 +70,7 @@ describe("cert", () => {
   it("pay_qrcode", async () => {
     const r = await client.pay_qrcode({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
     });
     console.info("Payment URL: \n", r);
@@ -79,7 +79,7 @@ describe("cert", () => {
   it("pay_mobile_web", async () => {
     const r = await client.pay_mobile_web({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
     });
     console.info("Payment URL: \n", r);
@@ -88,7 +88,7 @@ describe("cert", () => {
   it("pay_app", async () => {
     const r = await client.pay_app({
       fee: 0.1,
-      order_id: "test_" + nanoid(),
+      unique: "test_" + nanoid(),
       subject: "Test order",
     });
     console.info("Payment URL: \n", r);
@@ -111,19 +111,24 @@ describe("cert", () => {
   });
 
   describe("order", () => {
-    const order_id = process.env.alipay_order_id;
-    if (!order_id) {
+    const unique = process.env.alipay_order_id;
+    if (!unique) {
       console.warn("Require env: alipay_order_id");
       return;
     }
+
     it("query", async () => {
-      const r = await client.query({ order_id });
-      expect(r.code).toBeTruthy();
+      const r = await client.query({ unique });
+      expect(r?.ok).toBeTruthy();
+      expect(r?.unique).toBeTruthy();
+      expect(r?.created_at).toBeTruthy();
+      expect(r?.fee).toBeTruthy();
     });
+
     it("verify", async () => {
-      await expect(client.verify({ order_id })).resolves.not.toThrow();
+      await expect(client.verify({ unique })).resolves.not.toThrow();
       await expect(
-        client.verify({ order_id: "invalid_order_90971234" })
+        client.verify({ unique: "invalid_order_90971234" })
       ).rejects.toThrow(Verification_error);
     });
   });

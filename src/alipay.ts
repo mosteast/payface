@@ -1,6 +1,7 @@
 import AlipaySdk, { AlipaySdkConfig } from "alipay-sdk";
 import AlipayFormData from "alipay-sdk/lib/form";
 import { sign } from "alipay-sdk/lib/util";
+import { parse } from "date-fns";
 import { values } from "lodash";
 import { URLSearchParams } from "url";
 import { Base } from "./base";
@@ -11,14 +12,16 @@ import {
 } from "./error/invalid_argument";
 import { require_all } from "./error/util/lack_argument";
 import { Verification_error } from "./error/verification_error";
+import { n, round_money } from "./lib/math";
 import {
   I_query,
   I_transfer,
   I_verify,
   Payface,
   T_opt_payface,
+  T_receipt,
 } from "./payface";
-import { random_oid } from "./util";
+import { random_unique } from "./util";
 
 export class Alipay extends Base implements Payface {
   public sdk!: AlipaySdk;
@@ -118,7 +121,7 @@ export class Alipay extends Base implements Payface {
   }
 
   build_params({
-    order_id,
+    unique,
     fee,
     subject,
     return_url,
@@ -130,7 +133,7 @@ export class Alipay extends Base implements Payface {
       return_url: return_url || "https://alipay.com",
       bizContent: {
         total_amount: fee,
-        out_trade_no: order_id || random_oid(),
+        out_trade_no: unique || random_unique(),
         product_code,
         subject: subject || "Quick pay",
         ...content,
@@ -145,13 +148,13 @@ export class Alipay extends Base implements Payface {
     legal_name,
     fee,
     tid,
-    order_id,
+    unique,
     subject,
   }: I_transfer_alipay): Promise<boolean> {
     require_all({ fee });
     const r: any = await this.sdk.exec("alipay.fund.trans.uni.transfer", {
       bizContent: {
-        out_biz_no: order_id || random_oid(),
+        out_biz_no: unique || random_unique(),
         trans_amount: fee,
         product_code: "TRANS_ACCOUNT_NO_PWD",
         payee_info: {
@@ -191,17 +194,45 @@ export class Alipay extends Base implements Payface {
     return this.sdk.checkNotifySign(data);
   }
 
-  async query<T = any>({ order_id }: I_query): Promise<T> {
-    return this.sdk.exec("alipay.trade.query", {
+  async query({
+    unique,
+  }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {
+    const raw = (await this.sdk.exec("alipay.trade.query", {
       bizContent: {
-        out_trade_no: order_id,
+        out_trade_no: unique,
       },
-    });
+    })) as T_order_alipay;
+
+    if (!raw?.code) {
+      return;
+    }
+
+    let patch: Partial<T_receipt<T_order_alipay>> = {};
+    const ok =
+      raw.code === "10000" &&
+      raw.tradeStatus?.toLowerCase() === "trade_finished";
+    if (ok) {
+      patch = {
+        unique: raw.outTradeNo,
+        fee: round_money(n(raw.totalAmount)).toString(),
+        created_at: parse(
+          raw.sendPayDate,
+          "yyyy-MM-dd HH:mm:ss",
+          new Date()
+        ).toISOString(),
+      };
+    }
+
+    return {
+      ok,
+      raw,
+      ...patch,
+    } as T_receipt<T_order_alipay>;
   }
 
-  async verify<T = any>(opt: I_verify): Promise<T> {
+  async verify(opt: I_verify): Promise<T_receipt<T_order_alipay>> {
     const r = await this.query(opt);
-    if (r.msg.toLowerCase() !== "success") {
+    if (!r?.ok) {
       throw new Verification_error(r);
     }
 
@@ -247,4 +278,38 @@ export interface I_transfer_alipay extends I_transfer {
 export interface O_get_balance {
   total: string;
   frozen?: string;
+}
+
+/**
+ * Example:
+ * {
+ *   "code": "10000",
+ *   "msg": "Success",
+ *   "buyerLogonId": "the***@gmail.com",
+ *   "buyerPayAmount": "0.00",
+ *   "buyerUserId": "2088802470345283",
+ *   "invoiceAmount": "0.00",
+ *   "outTradeNo": "MOCK_15_1550056829_uy9mO8Mz",
+ *   "pointAmount": "0.00",
+ *   "receiptAmount": "0.00",
+ *   "sendPayDate": "2019-02-13 19:20:44",
+ *   "totalAmount": "0.20",
+ *   "tradeNo": "2019021322001445281015794830",
+ *   "tradeStatus": "TRADE_FINISHED"
+ * }
+ */
+export interface T_order_alipay {
+  code: string;
+  msg: string;
+  buyerLogonId: string;
+  buyerPayAmount: string;
+  buyerUserId: string;
+  invoiceAmount: string;
+  outTradeNo: string;
+  pointAmount: string;
+  receiptAmount: string;
+  sendPayDate: string;
+  totalAmount: string;
+  tradeNo: string;
+  tradeStatus: string;
 }

@@ -17,12 +17,31 @@ export interface Payface {
   /**
    * Query raw order data
    */
-  query<T = any>(opt: I_query): Promise<T>;
+  query(opt: I_query): Promise<T_receipt<any> | undefined>;
 
   /**
    * Verify by order unique id
    */
-  verify(opt: I_verify): Promise<void>;
+  verify(opt: I_verify): Promise<T_receipt<any>>;
+}
+
+export interface T_receipt<T> {
+  /**
+   * true: paid
+   * false: unpaid
+   */
+  ok: boolean;
+  /**
+   * Order id, sometimes called "out trade id"
+   */
+  unique: string;
+  fee: string;
+  /**
+   * Datetime ISO String
+   */
+  created_at?: string;
+  paid_at?: string;
+  raw: T;
 }
 
 export interface T_opt_payface {
@@ -34,7 +53,7 @@ export interface T_opt_payface {
 
 export interface I_pay {
   fee: number;
-  order_id?: string;
+  unique?: string;
   subject?: string;
   notify_url?: string;
 }
@@ -42,12 +61,12 @@ export interface I_pay {
 export interface I_transfer {
   fee: number;
   tid: string; // target id in 3rd party platform (like alipay id or wechat id)
-  order_id?: string;
+  unique?: string;
   subject?: string;
 }
 
 export interface I_query {
-  order_id: string;
+  unique: string;
 }
 
 export interface I_verify extends I_query {}
