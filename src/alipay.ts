@@ -198,9 +198,7 @@ export class Alipay extends Base implements Payface {
     unique,
   }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {
     const raw = (await this.sdk.exec("alipay.trade.query", {
-      bizContent: {
-        out_trade_no: unique,
-      },
+      bizContent: { out_trade_no: unique },
     })) as T_order_alipay;
 
     if (!raw?.code) {
