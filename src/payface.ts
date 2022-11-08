@@ -1,13 +1,15 @@
+import { T_url } from "./type";
+
 export interface Payface {
   /**
    * Returns payment qrcode string (URL mostly)
    */
-  pay_qrcode(...args: any[]): Promise<string>;
+  pay_qrcode(...args: any[]): Promise<T_url>;
 
   /**
    * Returns mobile web payment string (URL mostly)
    */
-  pay_mobile_web(...args: any[]): Promise<string>;
+  pay_mobile_web(...args: any[]): Promise<T_url>;
 
   /**
    * Verify notify signature

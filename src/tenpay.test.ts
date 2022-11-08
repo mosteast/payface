@@ -33,7 +33,8 @@ describe("tenpay", () => {
       unique: "test_" + nanoid(),
       subject: "Test order",
     });
-    console.info("Payment url:", r);
+    expect(r.url).toBeTruthy();
+    console.info("Payment url:", r.url);
     expect(r).toBeTruthy();
   });
 
@@ -44,7 +45,8 @@ describe("tenpay", () => {
       subject: "Test order",
       client_ip: "123.139.93.107",
     });
-    console.info("Payment url:", r);
+    expect(r.url).toBeTruthy();
+    console.info("Payment url:", r.url);
     expect(r).toBeTruthy();
   });
 
@@ -61,7 +63,8 @@ describe("tenpay", () => {
       subject: "Test order",
       client_ip: "123.139.93.107",
     });
-    console.info("Payment url:", r);
+    expect(r.prepay_id).toBeTruthy();
+    console.info("prepay_id", r.prepay_id);
     expect(r).toBeTruthy();
   });
 

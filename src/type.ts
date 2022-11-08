@@ -12,3 +12,7 @@ export enum E_level {
   internal = "internal",
   external = "external",
 }
+
+export interface T_url {
+  url: string;
+}

@@ -1,6 +1,7 @@
 import { E } from "@mosteast/e";
 import { AlipaySdkConfig } from "alipay-sdk";
 import { parse } from "date-fns";
+import { pick } from "lodash";
 import { Optional } from "utility-types";
 import { Base } from "./base";
 import { require_all } from "./error/util/lack_argument";
@@ -14,6 +15,7 @@ import {
   T_opt_payface,
   T_receipt,
 } from "./payface";
+import { T_url } from "./type";
 import { random_unique } from "./util";
 
 const TenpaySdk = require("tenpay");
@@ -35,32 +37,37 @@ export class Tenpay extends Base implements Payface {
     );
   }
 
-  async pay_qrcode(opt: I_pay_qrcode_tenpay): Promise<string> {
-    opt.trade_type = "NATIVE";
-    return this.pay_common(opt as I_pay_common);
+  async pay_qrcode(opt: I_pay_qrcode_tenpay): Promise<T_url> {
+    return this.pay_common(N_trade_type.native, opt as I_pay_common);
   }
 
-  async pay_mobile_web(opt: I_pay_mobile_web_tenpay): Promise<string> {
-    opt.trade_type = "MWEB";
-    return this.pay_common(opt as I_pay_common);
+  async pay_mobile_web(opt: I_pay_mobile_web_tenpay): Promise<T_url> {
+    return this.pay_common(N_trade_type.mweb, opt as I_pay_common);
   }
 
-  async pay_app(opt: I_pay_mobile_web_tenpay): Promise<string> {
-    opt.trade_type = "APP";
-    return this.pay_common(opt as I_pay_common);
+  async pay_app(opt: I_pay_mobile_web_tenpay): Promise<O_tenpay_pay_app> {
+    return this.pay_common(N_trade_type.app, opt as I_pay_common);
   }
 
-  async pay_common({
-    unique,
-    subject,
-    fee,
-    product_id,
-    trade_type,
-    client_ip,
-  }: I_pay_common): Promise<string> {
+  async pay_common(
+    trade_type: N_trade_type.mweb,
+    opt: I_pay_common
+  ): Promise<T_url>;
+  async pay_common(
+    trade_type: N_trade_type.native,
+    opt: I_pay_common
+  ): Promise<T_url>;
+  async pay_common(
+    trade_type: N_trade_type.app,
+    opt: I_pay_common
+  ): Promise<O_tenpay_pay_app>;
+  async pay_common(
+    trade_type: N_trade_type,
+    { unique, subject, fee, product_id, client_ip }: I_pay_common
+  ): Promise<any> {
     require_all({ fee });
-    let url: string;
-    const r = await this.sdk.unifiedOrder({
+    let r: any;
+    const res = await this.sdk.unifiedOrder({
       out_trade_no: unique || random_unique(),
       body: subject || "Quick pay",
       total_fee: tenpay_fee(fee),
@@ -71,21 +78,26 @@ export class Tenpay extends Base implements Payface {
     });
 
     switch (trade_type) {
-      case "MWEB":
-        url = r.mweb_url;
+      case N_trade_type.native:
+        r = { url: res.code_url };
         break;
-      default:
-        url = r.code_url;
+      case N_trade_type.mweb:
+        r = { url: res.mweb_url };
+        break;
+      case N_trade_type.app:
+        r = pick(res, ["mch_id", "appid", "nonce_str", "sign", "prepay_id"]);
+        break;
     }
 
-    if (!url) {
+    if (!r) {
       throw new E(
-        `Could not get url from result for trade_type: "${trade_type}", result: `,
-        r
+        `Could not get payment data from order result for trade_type: "${trade_type}", result: ${JSON.stringify(
+          r
+        )}`
       );
     }
 
-    return url;
+    return r;
   }
 
   async verify_notify_sign(data: any): Promise<boolean> {
@@ -154,10 +166,16 @@ export interface T_opt_tenpay extends T_opt_payface {
   opt_common?: AlipaySdkConfig;
 }
 
+export enum N_trade_type {
+  native = "NATIVE",
+  mweb = "MWEB",
+  app = "APP",
+}
+
 export interface I_pay_common extends I_pay {
   client_ip?: string;
   product_id?: number;
-  trade_type: "NATIVE" | "MWEB" | "APP";
+  trade_type: N_trade_type;
 }
 
 export interface I_pay_qrcode_tenpay
@@ -220,4 +238,12 @@ export interface T_order_tenpay {
   trade_state_desc: string;
   nonce_str: string;
   sign: string;
+}
+
+export interface O_tenpay_pay_app {
+  mch_id: string;
+  appid: string;
+  nonce_str: string;
+  sign: string;
+  prepay_id: string;
 }

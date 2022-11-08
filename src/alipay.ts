@@ -21,6 +21,7 @@ import {
   T_opt_payface,
   T_receipt,
 } from "./payface";
+import { T_url } from "./type";
 import { random_unique } from "./util";
 
 export class Alipay extends Base implements Payface {
@@ -79,7 +80,7 @@ export class Alipay extends Base implements Payface {
     return config.gateway + "?" + new URLSearchParams(data).toString();
   }
 
-  async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<string> {
+  async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<T_url> {
     const { qrcode } = opt;
     opt.product_code = "FAST_INSTANT_TRADE_PAY";
     opt.content = {
@@ -89,24 +90,28 @@ export class Alipay extends Base implements Payface {
     return this.pay_common(opt);
   }
 
-  async pay_mobile_web(opt: I_pay_alipay): Promise<string> {
+  async pay_mobile_web(opt: I_pay_alipay): Promise<T_url> {
     opt.product_code = "FAST_INSTANT_TRADE_PAY";
     opt.method = "alipay.trade.wap.pay";
     return this.pay_common(opt);
   }
 
-  async pay_app(opt: I_pay_alipay): Promise<string> {
+  async pay_app(opt: I_pay_alipay): Promise<T_url> {
     const p = this.build_params(opt);
     p.bizContent.ProductCode = "QUICK_MSECURITY_PAY";
     const formData = new AlipayFormData();
     formData.setMethod("get");
     formData.addField("bizContent", p.bizContent);
     formData.addField("notifyUrl", p.notify_url);
-    const r = await this.sdk.exec("alipay.trade.app.pay", {}, { formData });
-    return r as string; // https://openapi.alipay.com/gateway.do?app_cert_sn=31...
+    const url = (await this.sdk.exec(
+      "alipay.trade.app.pay",
+      {},
+      { formData }
+    )) as string;
+    return { url }; // https://openapi.alipay.com/gateway.do?app_cert_sn=31...
   }
 
-  async pay_common(opt: I_pay_alipay): Promise<string> {
+  async pay_common(opt: I_pay_alipay): Promise<T_url> {
     const { fee } = opt;
     let { method } = opt;
     require_all({ fee });
@@ -117,7 +122,7 @@ export class Alipay extends Base implements Payface {
     }
     method = method || "alipay.trade.page.pay";
 
-    return this.sign(method, this.build_params(opt));
+    return { url: this.sign(method, this.build_params(opt)) };
   }
 
   build_params({

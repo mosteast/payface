@@ -73,6 +73,7 @@ describe("cert", () => {
       unique: "test_" + nanoid(),
       subject: "Test order",
     });
+    expect(r.url).toBeTruthy();
     console.info("Payment URL: \n", r);
   });
 
@@ -82,6 +83,7 @@ describe("cert", () => {
       unique: "test_" + nanoid(),
       subject: "Test order",
     });
+    expect(r.url).toBeTruthy();
     console.info("Payment URL: \n", r);
   });
 
@@ -91,6 +93,7 @@ describe("cert", () => {
       unique: "test_" + nanoid(),
       subject: "Test order",
     });
+    expect(r.url).toBeTruthy();
     console.info("Payment URL: \n", r);
   });
 
