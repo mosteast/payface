@@ -15,7 +15,7 @@ import {
   T_opt_payface,
   T_receipt,
 } from "./payface";
-import { T_url } from "./type";
+import { T_url_payment } from "./type";
 import { random_unique } from "./util";
 
 const TenpaySdk = require("tenpay");
@@ -37,11 +37,11 @@ export class Tenpay extends Base implements Payface {
     );
   }
 
-  async pay_qrcode(opt: I_pay_qrcode_tenpay): Promise<T_url> {
+  async pay_qrcode(opt: I_pay_qrcode_tenpay): Promise<T_url_payment> {
     return this.pay_common(N_trade_type.native, opt as I_pay_common);
   }
 
-  async pay_mobile_web(opt: I_pay_mobile_web_tenpay): Promise<T_url> {
+  async pay_mobile_web(opt: I_pay_mobile_web_tenpay): Promise<T_url_payment> {
     return this.pay_common(N_trade_type.mweb, opt as I_pay_common);
   }
 
@@ -52,11 +52,11 @@ export class Tenpay extends Base implements Payface {
   async pay_common(
     trade_type: N_trade_type.mweb,
     opt: I_pay_common
-  ): Promise<T_url>;
+  ): Promise<T_url_payment>;
   async pay_common(
     trade_type: N_trade_type.native,
     opt: I_pay_common
-  ): Promise<T_url>;
+  ): Promise<T_url_payment>;
   async pay_common(
     trade_type: N_trade_type.app,
     opt: I_pay_common

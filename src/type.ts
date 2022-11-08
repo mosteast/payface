@@ -13,6 +13,6 @@ export enum E_level {
   external = "external",
 }
 
-export interface T_url {
+export interface T_url_payment {
   url: string;
 }
