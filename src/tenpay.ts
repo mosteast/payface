@@ -1,5 +1,4 @@
 import { E } from "@mosteast/e";
-import { AlipaySdkConfig } from "alipay-sdk";
 import { parse } from "date-fns";
 import { pick } from "lodash";
 import { Optional } from "utility-types";
@@ -163,7 +162,7 @@ export interface T_opt_tenpay extends T_opt_payface {
   id: string; // appid 公众号ID
   secret: string; // partnerKey 微信支付安全密钥
   mchid: string; // mchid 微信商户号
-  opt_common?: AlipaySdkConfig;
+  opt_common?: any;
 }
 
 export enum N_trade_type {
