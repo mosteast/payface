@@ -63,8 +63,8 @@ describe("tenpay", () => {
     });
     expect(r.prepay_id).toBeTruthy();
     expect(r.timestamp_sign).toBeTruthy();
+    expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
     console.info("prepay_id", r.prepay_id);
-    expect(r).toBeTruthy();
   });
 
   describe("order", () => {

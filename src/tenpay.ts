@@ -115,7 +115,7 @@ export class Tenpay extends Base implements Payface {
       /**
        * Timestamp to sign
        */
-      timestamp_sign: r.sign,
+      timestamp_sign: r.timestamp,
     };
   }
 
@@ -323,6 +323,18 @@ export interface O_tenpay_pay_app {
   timestamp_sign?: string;
 }
 
+/**
+ {
+  status: 200,
+  appid: 'wx41d141be52130624',
+  partnerid: '1373091502',
+  package: 'Sign=WXPay',
+  timestamp: '1668684236',
+  noncestr: 'aq26zljyc4c',
+  prepayid: 'wx17192356724129d89ec3f1c29ac6e70000',
+  sign: 'Trgkyu8VQz/f+QLwyf7gl4B61ti0z8T4FQpBRxzHY9XlY1StfaauPsA46kWvkzWS6WjhQZbxhTFqVCy9ZQYOh0HRJ/SxWeL/6ecPUuKOkfQFSL+K3c1L5xzT7+NX++Pk/7nuayYh4dPF1aDktDE1FSQRvnshS8RBzdx4QnZBapJZ6EGkrKyTfD1G1eBJ/TnpMATLHenLn/kf93E93kOcyZnGJULn9zZFGQDj7U3tJqhloq5ZySJMAnJ5oIhIpxSTA0Sxf6pDzpi3SWtRF46+KcOV4g2MkFa5TMIOa+HTAemD+IEDfu6R81dfQP0LrxX9dZBBotmMOYUAiINFsNVhyA=='
+}
+ */
 export interface O_tenpay_app {
   status: number;
   appid: string;
