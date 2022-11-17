@@ -66,7 +66,6 @@ describe("cert", () => {
       notify_url ||
       "https://payment.feature.giao.test.mosteast.com/payment/notify/aliapy",
   } as T_opt_alipay;
-  // console.log(opt);
 
   const client = new Alipay(opt);
 
