@@ -1,7 +1,8 @@
 import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
-import { Alipay, N_alipay_auth_type } from "./alipay";
+import { Alipay, N_alipay_auth_type, T_opt_alipay } from "./alipay";
 import { Verification_error } from "./error/verification_error";
+import { T_opt_tenpay } from "./tenpay";
 
 describe("secret", () => {
   const key = process.env.alipay_id;
@@ -52,17 +53,19 @@ describe("cert", () => {
     auth_type: N_alipay_auth_type.cert,
     id: process.env.alipay_id!,
     secret: process.env.alipay_secret!,
-    alipay_root_cert: readFileSync(
-      __dirname + "/test_asset/alipayRootCert.crt"
+    alipay_cert_content_root: readFileSync(
+      __dirname + "/test_asset/alipay/alipayRootCert.crt"
     ),
-    alipay_public_cert: readFileSync(
-      __dirname + "/test_asset/alipayCertPublicKey.crt"
+    alipay_cert_content_public: readFileSync(
+      __dirname + "/test_asset/alipay/alipayCertPublicKey.crt"
     ),
-    app_cert: readFileSync(__dirname + "/test_asset/appCertPublicKey.crt"),
+    alipay_cert_content_app: readFileSync(
+      __dirname + "/test_asset/alipay/appCertPublicKey.crt"
+    ),
     notify_url:
       notify_url ||
       "https://payment.feature.giao.test.mosteast.com/payment/notify/aliapy",
-  };
+  } as T_opt_alipay;
   // console.log(opt);
 
   const client = new Alipay(opt);

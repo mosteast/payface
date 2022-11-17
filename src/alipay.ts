@@ -34,10 +34,10 @@ export class Alipay extends Base implements Payface {
     const {
       id,
       secret,
-      alipay_public_cert,
-      alipay_root_cert,
+      alipay_cert_content_public,
+      alipay_cert_content_root,
       alipay_public_key,
-      app_cert,
+      alipay_cert_content_app,
       auth_type,
     } = opt;
     switch (auth_type) {
@@ -53,17 +53,17 @@ export class Alipay extends Base implements Payface {
         require_all({
           id,
           secret,
-          alipay_root_cert,
-          alipay_public_cert,
-          app_cert,
+          alipay_cert_content_root,
+          alipay_cert_content_public,
+          alipay_cert_content_app,
         });
 
         this.sdk = new AlipaySdk({
           appId: id,
           privateKey: secret,
-          alipayRootCertContent: alipay_root_cert,
-          alipayPublicCertContent: alipay_public_cert,
-          appCertContent: app_cert,
+          alipayRootCertContent: alipay_cert_content_root,
+          alipayPublicCertContent: alipay_cert_content_public,
+          appCertContent: alipay_cert_content_app,
         });
         break;
       default:
@@ -253,9 +253,9 @@ export interface T_opt_alipay extends T_opt_payface {
   secret: string; // app private key 应用私钥
   auth_type: N_alipay_auth_type;
   alipay_public_key?: string; // alipay public key 支付宝公钥
-  alipay_root_cert?: string | Buffer; // alipay root cert content 支付宝根证书内容
-  alipay_public_cert?: string | Buffer; // alipay public cert content 支付宝公钥证书内容
-  app_cert?: string | Buffer; // app cert content 应用证书内容
+  alipay_cert_content_root?: string | Buffer; // alipay root cert content 支付宝根证书内容
+  alipay_cert_content_public?: string | Buffer; // alipay public cert content 支付宝公钥证书内容
+  alipay_cert_content_app?: string | Buffer; // app cert content 应用证书内容
   opt_common?: AlipaySdkConfig;
 }
 

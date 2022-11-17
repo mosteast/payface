@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
 import { Verification_error } from "./error/verification_error";
 import { Tenpay } from "./tenpay";
@@ -5,33 +6,36 @@ import { Tenpay } from "./tenpay";
 let client: Tenpay;
 
 describe("tenpay", () => {
-  const id = process.env.tenpay_id;
-  const secret = process.env.tenpay_secret;
-  const mchid = process.env.tenpay_mchid;
+  const id = process.env.tenpay_id as string;
+  const mchid = process.env.tenpay_mchid as string;
+  const tenpay_cert_content_public = readFileSync(
+    __dirname + "/test_asset/tenpay/apiclient_cert.pem"
+  );
+  const tenpay_cert_content_private = readFileSync(
+    __dirname + "/test_asset/tenpay/apiclient_key.pem"
+  );
 
-  if (!id || !secret || !mchid) {
-    console.warn("Empty env: tenpay_id or tenpay_secret or tenpay_mchid");
+  if (!id || !mchid) {
+    console.warn("Empty env: tenpay_id or tenpay_mchid");
     return;
   }
 
-  client = new Tenpay({
-    id,
-    secret,
-    mchid,
-    notify_url: "https://example.com",
+  beforeEach(() => {
+    client = new Tenpay({
+      id,
+      mch_id: mchid,
+      notify_url: "https://example.com",
+      tenpay_cert_content_public,
+      tenpay_cert_content_private,
+    });
   });
 
   it("pay_qrcode", async () => {
-    const row = new Tenpay({
-      id,
-      secret,
-      mchid,
-      notify_url: "https://example.com",
-    });
-    const r = await row.pay_qrcode({
+    const r = await client.pay_qrcode({
       fee: 0.1,
       unique: "test_" + nanoid(),
       subject: "Test order",
+      client_ip: "123.139.93.107",
     });
     expect(r.url).toBeTruthy();
     console.info("Payment url:", r.url);
@@ -46,19 +50,12 @@ describe("tenpay", () => {
       client_ip: "123.139.93.107",
     });
     expect(r.url).toBeTruthy();
-    expect(r.timestamp_sign).toBeTruthy();
     console.info("Payment url:", r.url);
     expect(r).toBeTruthy();
   });
 
   it("pay_app", async () => {
-    const row = new Tenpay({
-      id,
-      secret,
-      mchid,
-      notify_url: "https://example.com",
-    });
-    const r = await row.pay_app({
+    const r = await client.pay_app({
       fee: 0.1,
       unique: "test_" + nanoid(),
       subject: "Test order",
