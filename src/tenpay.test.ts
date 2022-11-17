@@ -38,7 +38,7 @@ describe("tenpay", () => {
     expect(r).toBeTruthy();
   });
 
-  it("pay_qrcode", async () => {
+  it("mobile_web", async () => {
     const r = await client.pay_mobile_web({
       fee: 0.1,
       unique: "test_" + nanoid(),
@@ -46,6 +46,7 @@ describe("tenpay", () => {
       client_ip: "123.139.93.107",
     });
     expect(r.url).toBeTruthy();
+    expect(r.timestamp_sign).toBeTruthy();
     console.info("Payment url:", r.url);
     expect(r).toBeTruthy();
   });
@@ -74,6 +75,7 @@ describe("tenpay", () => {
       console.warn("Require env: tenpay_order_id");
       return;
     }
+
     it("query", async () => {
       const r = await client.query({ unique });
       expect(r?.ok).toBeTruthy();

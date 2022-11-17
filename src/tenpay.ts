@@ -66,7 +66,7 @@ export class Tenpay extends Base implements Payface {
   ): Promise<any> {
     require_all({ fee });
     let r: any;
-    const res = await this.sdk.unifiedOrder({
+    const params: any = {
       out_trade_no: unique || random_unique(),
       body: subject || "Quick pay",
       total_fee: tenpay_fee(fee),
@@ -74,17 +74,24 @@ export class Tenpay extends Base implements Payface {
       notify_url: this.opt.notify_url,
       trade_type,
       spbill_create_ip: client_ip,
-    });
+    };
+
+    const order = await this.sdk.unifiedOrder(params);
+    const detail = this.sdk.getPayParamsByPrepay(order);
+    const { timestamp: timestamp_sign } = detail;
 
     switch (trade_type) {
       case N_trade_type.native:
-        r = { url: res.code_url };
+        r = { url: order.code_url, timestamp_sign } as T_url_payment;
         break;
       case N_trade_type.mweb:
-        r = { url: res.mweb_url };
+        r = { url: order.mweb_url, timestamp_sign } as T_url_payment;
         break;
       case N_trade_type.app:
-        r = pick(res, ["mch_id", "appid", "nonce_str", "sign", "prepay_id"]);
+        r = {
+          ...pick(order, ["mch_id", "appid", "nonce_str", "sign", "prepay_id"]),
+          timestamp_sign,
+        } as O_tenpay_pay_app;
         break;
     }
 
@@ -245,4 +252,5 @@ export interface O_tenpay_pay_app {
   nonce_str: string;
   sign: string;
   prepay_id: string;
+  timestamp_sign?: string;
 }
