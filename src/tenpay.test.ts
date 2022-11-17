@@ -89,4 +89,29 @@ describe("tenpay", () => {
       ).rejects.toThrow(Verification_error);
     });
   });
+
+  describe("verify_notify_sign", () => {
+    it("common", async () => {
+      const raw = {
+        appid: "wx41d141be52130624",
+        bank_type: "CMB_DEBIT",
+        cash_fee: "1",
+        fee_type: "CNY",
+        is_subscribe: "Y",
+        mch_id: "1373091502",
+        nonce_str: "x497uFKK7JHgInT0",
+        openid: "oIYGjt1dQ2ntgwsL3n-Z18E8T3TE",
+        out_trade_no: "giao_payment25DZYMQVSPHK",
+        result_code: "SUCCESS",
+        return_code: "SUCCESS",
+        sign: "AD1881435AF65D13529A2C4492EDBAEF",
+        time_end: "20210223143409",
+        total_fee: 1,
+        trade_type: "NATIVE",
+        transaction_id: "4200000939202102230544535527",
+      };
+      const r = await client.verify_notify_sign(raw);
+      console.log(r);
+    });
+  });
 });

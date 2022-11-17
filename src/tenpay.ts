@@ -182,7 +182,7 @@ export class Tenpay extends Base implements Payface {
     try {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      return !!this.sdk.verifySign(data);
+      return this.sdk.verifySign(data);
     } catch (e) {
       return false;
     }

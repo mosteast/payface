@@ -2,6 +2,7 @@ import AlipaySdk, { AlipaySdkConfig } from "alipay-sdk";
 import AlipayFormData from "alipay-sdk/lib/form";
 import { sign } from "alipay-sdk/lib/util";
 import { parse } from "date-fns";
+import debug from "debug";
 import { values } from "lodash";
 import { URLSearchParams } from "url";
 import { Base } from "./base";
@@ -23,6 +24,8 @@ import {
 } from "./payface";
 import { T_url_payment } from "./type";
 import { random_unique } from "./util";
+
+const _ = debug("payface:tenpay");
 
 export class Alipay extends Base implements Payface {
   public sdk!: AlipaySdk;
@@ -87,12 +90,14 @@ export class Alipay extends Base implements Payface {
       qr_pay_mode: 4,
       qrcode_width: qrcode?.width || 200,
     };
+    _("pay_qrcode, I: %o", opt);
     return this.pay_common(opt);
   }
 
   async pay_mobile_web(opt: I_pay_alipay): Promise<T_url_payment> {
     opt.product_code = "FAST_INSTANT_TRADE_PAY";
     opt.method = "alipay.trade.wap.pay";
+    _("pay_qrcode, I: %o", opt);
     return this.pay_common(opt);
   }
 
@@ -103,6 +108,8 @@ export class Alipay extends Base implements Payface {
     formData.setMethod("get");
     formData.addField("bizContent", p.bizContent);
     formData.addField("notifyUrl", p.notify_url);
+    _("pay_qrcode, I: %o", opt);
+    _("pay_qrcode, formData: %o", formData);
     const url = (await this.sdk.exec(
       "alipay.trade.app.pay",
       {},
