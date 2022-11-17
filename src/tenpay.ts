@@ -178,12 +178,19 @@ export class Tenpay extends Base implements Payface {
   //   return r;
   // }
 
-  async verify_notify_sign(data: any): Promise<boolean> {
+  async verify_notify_sign({ resource }: T_tenpay_callback): Promise<boolean> {
     try {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      return this.sdk.verifySign(data);
+      const r: any = this.sdk.decipher_gcm(
+        resource.ciphertext,
+        resource.associated_data,
+        resource.nonce,
+        "E8B550939D790BCF60B892F28EBE68E5"
+      );
+      return r.trade_state === "SUCCESS";
     } catch (e) {
+      console.error(e);
       return false;
     }
   }
@@ -404,4 +411,19 @@ export interface O_tenpay_query {
   trade_state_desc: string;
   trade_type: string;
   transaction_id: string;
+}
+
+export interface T_tenpay_callback {
+  id: string;
+  create_time: string;
+  resource_type: string;
+  event_type: string;
+  summary: string;
+  resource: {
+    original_type: string;
+    aithm: string;
+    ciphertext: string;
+    associated_data: string;
+    nonce: string;
+  };
 }
