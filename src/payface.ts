@@ -14,7 +14,7 @@ export interface Payface {
   /**
    * Verify notify signature
    */
-  verify_notify_sign(data: any): Promise<false | any>;
+  verify_notify_sign(data: any): Promise<boolean>;
 
   /**
    * Query raw order data
