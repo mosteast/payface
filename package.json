@@ -1,6 +1,6 @@
 {
   "name": "payface",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Payment interface for alipay and wechat",
   "homepage": "https://github.com/mosteast/payface#readme",
   "repository": "github:mosteast/payface",

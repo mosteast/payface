@@ -178,17 +178,19 @@ export class Tenpay extends Base implements Payface {
   //   return r;
   // }
 
-  async verify_notify_sign({ resource }: T_tenpay_callback): Promise<boolean> {
+  async verify_notify_sign({
+    resource,
+  }: T_tenpay_callback): Promise<false | O_tenpay_decipher> {
     try {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      const r: any = this.sdk.decipher_gcm(
+      const r: O_tenpay_decipher = this.sdk.decipher_gcm(
         resource.ciphertext,
         resource.associated_data,
         resource.nonce,
         "E8B550939D790BCF60B892F28EBE68E5"
       );
-      return r.trade_state === "SUCCESS";
+      return r.trade_state === "SUCCESS" ? r : false;
     } catch (e) {
       console.error(e);
       return false;
@@ -413,6 +415,23 @@ export interface O_tenpay_query {
   transaction_id: string;
 }
 
+/**
+ {
+    id: "c3f65444-8a57-5b56-869e-92cbddc1df33",
+    create_time: "2022-11-17T20:38:59+08:00",
+    resource_type: "encrypt-resource",
+    event_type: "TRANSACTION.SUCCESS",
+    summary: "支付成功",
+    resource: {
+      original_type: "transaction",
+      aithm: "AEAD_AES_256_GCM",
+      ciphertext:
+        "8budXaFzlY4cZaNnwovQTwOJjSSY1TulSVGAtnP2bh9Oc/09e+9MnEK+OJF047va3BlMhdDnfmXysmilO/Xf6LpksZfYBNn2w0hzOWIwk7vtRW9hk1S/8+rwj8Aj6+NH0PvFxzBqAsOVMvvMYCvt/FI5SVKefzgHNfJ74UGNezARztqZt/BZFQF+XTFgEduwanvWR6HrCcpy5n1frB9B+HjfKS3ZCsqVhHSvURAS+Gc45Pgv/uGDFBM/sogoYrlf5kezM5mZchPDuZjkQp7+fyl6ONW8b/34RYTlHCxq5LB1octHknGMdD9iC7BgHYG6rqnCUIA//al3hHngXyK1urnIfmi3iFNfDRIxNXHRZJ2pDmwXuxAQEqpJ6sz6vNCcSPazQwqRqKQD3m889qzKpC9yX73xOd1AwUyDKkqkUWtcNP/S82G2eizFMKIqrp4pOaSBUIbxIitAAxtyFeqVefxad1HcZnPmI6C4cgPW5+k/YRvFIUaCapT16PV3PEZVRvesQRA5ney5S3NXcz9KtWNQaePpxqzr1+LSRZtONizXFDm7oAYCnS2uT7s=",
+      associated_data: "transaction",
+      nonce: "b43YbME3roU2",
+    },
+  }
+ */
 export interface T_tenpay_callback {
   id: string;
   create_time: string;
@@ -425,5 +444,46 @@ export interface T_tenpay_callback {
     ciphertext: string;
     associated_data: string;
     nonce: string;
+  };
+}
+
+/**
+ {
+    mchid: '1373091502',
+    appid: 'wx4ba9f9e08a7898a3',
+    out_trade_no: 'R139326100',
+    transaction_id: '4200001640202211171860369532',
+    trade_type: 'NATIVE',
+    trade_state: 'SUCCESS',
+    trade_state_desc: '支付成功',
+    bank_type: 'OTHERS',
+    attach: '',
+    success_time: '2022-11-17T20:38:59+08:00',
+    payer: { openid: 'oC3QX6kArsXfGyjRKwVnEOB0hgVY' },
+    amount: {
+      total: 10,
+      payer_total: 10,
+      currency: 'CNY',
+      payer_currency: 'CNY'
+    }
+  }
+ */
+export interface O_tenpay_decipher {
+  mchid: string;
+  appid: string;
+  out_trade_no: string;
+  transaction_id: string;
+  trade_type: string;
+  trade_state: string;
+  trade_state_desc: string;
+  bank_type: string;
+  attach: string;
+  success_time: string;
+  payer: { openid: string };
+  amount: {
+    total: number;
+    payer_total: number;
+    currency: string;
+    payer_currency: string;
   };
 }
