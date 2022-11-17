@@ -252,5 +252,8 @@ export interface O_tenpay_pay_app {
   nonce_str: string;
   sign: string;
   prepay_id: string;
+  /**
+   * Timestamp to sign
+   */
   timestamp_sign?: string;
 }

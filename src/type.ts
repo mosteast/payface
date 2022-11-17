@@ -16,7 +16,7 @@ export enum E_level {
 export interface T_url_payment {
   url: string;
   /**
-   * Timestamp used by signer
+   * Timestamp to sign
    */
   timestamp_sign?: string;
 }
