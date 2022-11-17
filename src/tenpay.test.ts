@@ -39,7 +39,6 @@ describe("tenpay", () => {
     });
     expect(r.url).toBeTruthy();
     console.info("Payment url:", r.url);
-    expect(r).toBeTruthy();
   });
 
   it("mobile_web", async () => {
