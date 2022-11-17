@@ -65,6 +65,7 @@ describe("tenpay", () => {
       client_ip: "123.139.93.107",
     });
     expect(r.prepay_id).toBeTruthy();
+    expect(r.timestamp_sign).toBeTruthy();
     console.info("prepay_id", r.prepay_id);
     expect(r).toBeTruthy();
   });

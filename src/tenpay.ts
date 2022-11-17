@@ -74,10 +74,11 @@ export class Tenpay extends Base implements Payface {
       notify_url: this.opt.notify_url,
       trade_type,
       spbill_create_ip: client_ip,
+      signType: "MD5",
     };
 
     const order = await this.sdk.unifiedOrder(params);
-    const detail = this.sdk.getPayParamsByPrepay(order);
+    const detail = this.sdk.getPayParamsByPrepay(order, params.signType);
     const { timestamp: timestamp_sign } = detail;
 
     switch (trade_type) {
