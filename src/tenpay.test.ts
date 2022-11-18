@@ -50,9 +50,9 @@ describe("tenpay", () => {
       subject: "Test order",
       client_ip: "123.139.93.107",
     });
+    expect(r).toBeTruthy();
     expect(r.url).toBeTruthy();
     console.info("Payment url:", r.url);
-    expect(r).toBeTruthy();
   });
 
   it("pay_app", async () => {
