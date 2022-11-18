@@ -88,7 +88,7 @@ export class Alipay extends Base implements Payface {
     opt.product_code = "FAST_INSTANT_TRADE_PAY";
     opt.content = {
       qr_pay_mode: 4,
-      qrcode_width: qrcode?.width || 200,
+      qrcode_width: qrcode?.width || 160,
     };
     _("pay_qrcode, I: %o", opt);
     return this.pay_common(opt);

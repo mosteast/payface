@@ -74,6 +74,9 @@ describe("cert", () => {
       fee: 0.1,
       unique: "test_" + nanoid(),
       subject: "Test order",
+      qrcode: {
+        width: 200,
+      },
     });
     expect(r.url).toBeTruthy();
     console.info("Payment URL: \n", r);
