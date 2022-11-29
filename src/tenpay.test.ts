@@ -91,6 +91,31 @@ describe("tenpay", () => {
     });
   });
 
+  describe("refund", () => {
+    it("common", async () => {
+      const refund_unique = process.env.tenpay_refund_unique as string;
+      const refund_fee = parseFloat(process.env.tenpay_refund_fee as any);
+      const refund_refund = parseFloat(process.env.tenpay_refund_fee as any);
+      await client.refund({
+        unique: refund_unique,
+        fee: refund_fee,
+        refund: refund_refund,
+      });
+    });
+  });
+
+  describe("refund_query", () => {
+    it("common", async () => {
+      const refund_unique = process.env.tenpay_refund_unique as string;
+      const refund_refund = parseFloat(process.env.tenpay_refund_fee as any);
+      const r = await client.refund_query({ unique: refund_unique });
+      expect(r.ok).toBeTruthy();
+      expect(r.refund).toBe(refund_refund);
+      expect(r.pending).toBeFalsy();
+      expect(r.raw).toBeTruthy();
+    });
+  });
+
   // describe('parse_notification/verify_notify_sign', () => {
   //   const raw = {
   //     id: 'c3f65444-8a57-5b56-869e-92cbddc1df33',

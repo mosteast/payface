@@ -25,6 +25,16 @@ export interface Payface {
    * Verify by order unique id
    */
   verify(opt: I_verify): Promise<T_receipt<any>>;
+
+  /**
+   * Refund order
+   */
+  refund(opt: I_refund): Promise<void>;
+
+  /**
+   * Query refund order
+   */
+  refund_query({ unique }: I_refund_query): Promise<T_refund<any>>;
 }
 
 export interface T_receipt<T> {
@@ -71,4 +81,22 @@ export interface I_query {
   unique: string;
 }
 
+export interface I_refund extends I_query {
+  /**
+   * Refund value (should ≤ than fee)
+   */
+  refund: number;
+}
+
+export interface I_refund_query {
+  unique: string;
+}
+
 export interface I_verify extends I_query {}
+
+export interface T_refund<T> {
+  ok: boolean;
+  pending?: boolean;
+  refund: number;
+  raw: T;
+}

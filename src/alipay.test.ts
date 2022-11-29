@@ -2,7 +2,6 @@ import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
 import { Alipay, N_alipay_auth_type, T_opt_alipay } from "./alipay";
 import { Verification_error } from "./error/verification_error";
-import { T_opt_tenpay } from "./tenpay";
 
 describe("secret", () => {
   const key = process.env.alipay_id;
@@ -138,6 +137,29 @@ describe("cert", () => {
       await expect(
         client.verify({ unique: "invalid_order_90971234" })
       ).rejects.toThrow(Verification_error);
+    });
+  });
+
+  describe("refund", () => {
+    it("common", async () => {
+      const refund_unique = process.env.alipay_refund_unique as string;
+      const refund_refund = parseFloat(process.env.alipay_refund_fee as any);
+      await client.refund({ unique: refund_unique, refund: refund_refund });
+    });
+  });
+
+  describe("refund_query", () => {
+    it("common", async () => {
+      const refund_unique = process.env.alipay_refund_unique as string;
+      const refund_refund = parseFloat(process.env.alipay_refund_fee as any);
+      const r = await client.refund_query({
+        unique: refund_unique,
+        refund: refund_refund,
+      });
+      expect(r.ok).toBeTruthy();
+      expect(r.refund).toBe(refund_refund);
+      expect(r.pending).toBeFalsy();
+      expect(r.raw).toBeTruthy();
     });
   });
 });

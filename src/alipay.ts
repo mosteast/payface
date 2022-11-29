@@ -11,16 +11,19 @@ import {
   Invalid_argument,
   Invalid_argument_external,
 } from "./error/invalid_argument";
+import { Invalid_state_external } from "./error/invalid_state";
 import { require_all } from "./error/util/lack_argument";
 import { Verification_error } from "./error/verification_error";
 import { n, round_money } from "./lib/math";
 import {
   I_query,
+  I_refund,
   I_transfer,
   I_verify,
   Payface,
   T_opt_payface,
   T_receipt,
+  T_refund,
 } from "./payface";
 import { T_url_payment } from "./type";
 import { random_unique } from "./util";
@@ -218,9 +221,7 @@ export class Alipay extends Base implements Payface {
     }
 
     let patch: Partial<T_receipt<T_order_alipay>> = {};
-    const ok =
-      raw.code === "10000" &&
-      raw.tradeStatus?.toLowerCase() === "trade_finished";
+    const ok = raw.code === "10000";
     if (ok) {
       patch = {
         unique: raw.outTradeNo,
@@ -247,6 +248,33 @@ export class Alipay extends Base implements Payface {
     }
 
     return r;
+  }
+
+  async _refund({ unique, refund }: I_refund): Promise<T_raw_refund> {
+    return this.sdk.exec("alipay.trade.refund", {
+      bizContent: { out_trade_no: unique, refund_amount: refund },
+    });
+  }
+
+  async refund(opt: I_refund): Promise<void> {
+    const r = await this._refund(opt);
+    if (r.code !== "10000") {
+      throw new Invalid_state_external(`[${r.code}], ${r.msg}`);
+    }
+  }
+
+  async refund_query(opt: I_refund): Promise<T_refund<any>> {
+    const raw = await this._refund(opt);
+
+    if (raw.code !== "10000") {
+      throw new Invalid_state_external(`[${raw.code}], ${raw.msg}`);
+    }
+
+    return {
+      raw,
+      ok: raw.code === "10000",
+      refund: round_money(raw.refundFee),
+    };
   }
 }
 
@@ -322,4 +350,17 @@ export interface T_order_alipay {
   totalAmount: string;
   tradeNo: string;
   tradeStatus: string;
+}
+
+export interface T_raw_refund {
+  code: string;
+  msg: string;
+  buyerLogonId: string;
+  buyerUserId: string;
+  fundChange: string;
+  gmtRefundPay: string;
+  outTradeNo: string;
+  refundFee: string;
+  sendBackFee: string;
+  tradeNo: string;
 }

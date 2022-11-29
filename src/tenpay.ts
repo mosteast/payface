@@ -1,18 +1,27 @@
 import debug from "debug";
 import { Optional } from "utility-types";
 import Wx from "wechatpay-node-v3";
-import { Iapp, Ih5, Inative } from "wechatpay-node-v3/dist/lib/interface";
+import {
+  Iapp,
+  Ih5,
+  Inative,
+  Irefunds2,
+} from "wechatpay-node-v3/dist/lib/interface";
 import { Base } from "./base";
+import { Invalid_state_external } from "./error/invalid_state";
 import { require_all } from "./error/util/lack_argument";
 import { Verification_error } from "./error/verification_error";
-import { n, round_money } from "./lib/math";
+import { n, round_int, round_money } from "./lib/math";
 import {
   I_pay,
   I_query,
+  I_refund,
+  I_refund_query,
   I_verify,
   Payface,
   T_opt_payface,
   T_receipt,
+  T_refund,
 } from "./payface";
 import { T_url_payment } from "./type";
 import { random_unique } from "./util";
@@ -45,7 +54,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || "Quick pay",
       amount: {
-        total: tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee as number),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -67,7 +76,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || "Quick pay",
       amount: {
-        total: tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee as number),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -94,7 +103,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || "Quick pay",
       amount: {
-        total: tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee as number),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -236,6 +245,37 @@ export class Tenpay extends Base implements Payface {
     return r;
   }
 
+  async refund({ unique, fee, refund }: I_refund_tenpay): Promise<void> {
+    require_all({ unique, fee });
+    let r;
+    r = await this.sdk.refunds({
+      out_trade_no: unique,
+      out_refund_no: `${unique}_refund`,
+      amount: {
+        total: to_tenpay_fee(refund),
+        refund: to_tenpay_fee(fee),
+        currency: "CNY",
+      },
+    } as Irefunds2);
+
+    if (!["PROCESSING", "SUCCESS"].includes(r.status)) {
+      throw new Invalid_state_external(`[${r.status}], ${r.message}`);
+    }
+  }
+
+  async refund_query({
+    unique,
+  }: I_refund_query): Promise<T_refund<T_tenpay_refund>> {
+    require_all({ unique });
+    const raw = (await this.sdk.find_refunds(unique)) as T_tenpay_refund;
+    return {
+      raw,
+      refund: from_tenpay_fee(raw.amount.refund),
+      ok: raw.status === "SUCCESS",
+      pending: raw.status === "PROCESSING",
+    };
+  }
+
   protected validate_opt(opt: T_opt_tenpay) {
     super.validate_opt(opt);
     const { mch_id, tenpay_cert_content_private, tenpay_cert_content_public } =
@@ -268,8 +308,12 @@ export interface I_pay_mobile_web_tenpay extends Optional<I_pay_common> {
   client_ip: string;
 }
 
-export function tenpay_fee(fee: number) {
-  return fee * 100;
+export function to_tenpay_fee(fee: number) {
+  return round_int(n(fee).times(100));
+}
+
+export function from_tenpay_fee(fee: number) {
+  return round_money(n(fee).div(100));
 }
 
 /**
@@ -488,4 +532,37 @@ export interface O_tenpay_decipher {
     currency: string;
     payer_currency: string;
   };
+}
+
+export interface T_tenpay_refund {
+  status: string;
+  amount: {
+    currency: string;
+    discount_refund: number;
+    from: [];
+    payer_refund: number;
+    payer_total: number;
+    refund: number;
+    refund_fee: number;
+    settlement_refund: number;
+    settlement_total: number;
+    total: number;
+  };
+  channel: string;
+  create_time: string;
+  funds_account: string;
+  out_refund_no: string;
+  out_trade_no: string;
+  promotion_detail: [];
+  refund_id: string;
+  success_time: string;
+  transaction_id: string;
+  user_received_account: string;
+}
+
+export interface I_refund_tenpay extends I_refund {
+  /**
+   * Total fee
+   */
+  fee: number;
 }
