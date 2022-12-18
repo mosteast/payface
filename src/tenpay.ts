@@ -50,6 +50,7 @@ export class Tenpay extends Base implements Payface {
     fee,
     client_ip,
   }: I_pay_qrcode_tenpay): Promise<T_url_payment> {
+    require_all({ fee, client_ip });
     const params: Inative = {
       out_trade_no: unique || random_unique(),
       description: subject || "Quick pay",
@@ -298,7 +299,7 @@ export interface T_opt_tenpay extends T_opt_payface {
 }
 
 export interface I_pay_common extends I_pay {
-  client_ip?: string;
+  client_ip: string;
   product_id?: number;
 }
 
