@@ -1,26 +1,27 @@
 import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Verification_error } from "./error/verification_error";
 import { Tenpay } from "./tenpay";
 
-let client: Tenpay;
+const id = process.env.tenpay_id as string;
+const mchid = process.env.tenpay_mchid as string;
+const secret = process.env.tenpay_secret as string;
+const tenpay_cert_content_public = readFileSync(
+  __dirname + "/test_asset/tenpay/apiclient_cert.pem"
+);
+const tenpay_cert_content_private = readFileSync(
+  __dirname + "/test_asset/tenpay/apiclient_key.pem"
+);
+
+if (!id || !mchid || !secret) {
+  console.warn(
+    `Empty env: {tenpay_id:${id}} or {tenpay_mchid:${mchid}} or {tenpay_secret:${secret}}`
+  );
+}
 
 describe("tenpay", () => {
-  const id = process.env.tenpay_id as string;
-  const mchid = process.env.tenpay_mchid as string;
-  const secret = process.env.tenpay_secret as string;
-  const tenpay_cert_content_public = readFileSync(
-    __dirname + "/test_asset/tenpay/apiclient_cert.pem"
-  );
-  const tenpay_cert_content_private = readFileSync(
-    __dirname + "/test_asset/tenpay/apiclient_key.pem"
-  );
-
-  if (!id || !mchid || !secret) {
-    console.warn("Empty env: {tenpay_id} or {tenpay_mchid} or {tenpay_secret}");
-    return;
-  }
-
+  let client: Tenpay;
   beforeEach(() => {
     client = new Tenpay({
       id,

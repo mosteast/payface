@@ -1,4 +1,13 @@
 import { Invalid_argument } from "./invalid_argument";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+  afterEach,
+} from "vitest";
 
 it("pass as map", async () => {
   const a = 1,

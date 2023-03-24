@@ -2,6 +2,15 @@ import { readFileSync } from "fs";
 import { nanoid } from "nanoid";
 import { Alipay, N_alipay_auth_type, T_opt_alipay } from "./alipay";
 import { Verification_error } from "./error/verification_error";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+  afterEach,
+} from "vitest";
 
 describe("secret", () => {
   const key = process.env.alipay_id;
