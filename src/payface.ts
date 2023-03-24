@@ -1,4 +1,4 @@
-import { T_url_payment } from "./type";
+import { T_url_payment } from './type';
 
 export interface Payface {
   /**

@@ -1,7 +1,7 @@
 /**
  * Big number
  */
-import Decimal from "decimal.js";
+import Decimal from 'decimal.js';
 import Value = Decimal.Value;
 
 export type I_bignumber = Value;

@@ -1,17 +1,12 @@
-import debug from "debug";
-import { Optional } from "utility-types";
-import Wx from "wechatpay-node-v3";
-import {
-  Iapp,
-  Ih5,
-  Inative,
-  Irefunds2,
-} from "wechatpay-node-v3/dist/lib/interface";
-import { Base } from "./base";
-import { Invalid_state_external } from "./error/invalid_state";
-import { require_all } from "./error/util/lack_argument";
-import { Verification_error } from "./error/verification_error";
-import { n, round_int, round_money } from "./lib/math";
+import debug from 'debug';
+import { Optional } from 'utility-types';
+import Wx from 'wechatpay-node-v3';
+import { Iapp, Ih5, Inative, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
+import { Base } from './base';
+import { Invalid_state_external } from './error/invalid_state';
+import { require_all } from './error/util/lack_argument';
+import { Verification_error } from './error/verification_error';
+import { n, round_int, round_money } from './lib/math';
 import {
   I_pay,
   I_query,
@@ -22,11 +17,11 @@ import {
   T_opt_payface,
   T_receipt,
   T_refund,
-} from "./payface";
-import { T_url_payment } from "./type";
-import { random_unique } from "./util";
+} from './payface';
+import { T_url_payment } from './type';
+import { random_unique } from './util';
 
-const _ = debug("payface:tenpay");
+const _ = debug('payface:tenpay');
 
 export class Tenpay extends Base implements Payface {
   public sdk!: Wx;
@@ -44,16 +39,11 @@ export class Tenpay extends Base implements Payface {
     });
   }
 
-  async pay_qrcode({
-    unique,
-    subject,
-    fee,
-    client_ip,
-  }: I_pay_qrcode_tenpay): Promise<T_url_payment> {
+  async pay_qrcode({ unique, subject, fee, client_ip }: I_pay_qrcode_tenpay): Promise<T_url_payment> {
     require_all({ fee, client_ip });
     const params: Inative = {
       out_trade_no: unique || random_unique(),
-      description: subject || "Quick pay",
+      description: subject || 'Quick pay',
       amount: {
         total: to_tenpay_fee(fee as number),
       },
@@ -67,15 +57,10 @@ export class Tenpay extends Base implements Payface {
     return { url: r.code_url } as any;
   }
 
-  async pay_mobile_web({
-    unique,
-    subject,
-    fee,
-    client_ip,
-  }: I_pay_mobile_web_tenpay): Promise<T_url_payment> {
+  async pay_mobile_web({ unique, subject, fee, client_ip }: I_pay_mobile_web_tenpay): Promise<T_url_payment> {
     const params: Ih5 = {
       out_trade_no: unique || random_unique(),
-      description: subject || "Quick pay",
+      description: subject || 'Quick pay',
       amount: {
         total: to_tenpay_fee(fee as number),
       },
@@ -83,9 +68,9 @@ export class Tenpay extends Base implements Payface {
       scene_info: {
         payer_client_ip: client_ip as string,
         h5_info: {
-          type: "Wap",
-          app_name: "Payface",
-          app_url: "https://www.mosteast.com",
+          type: 'Wap',
+          app_name: 'Payface',
+          app_url: 'https://www.mosteast.com',
         },
       },
     };
@@ -94,15 +79,10 @@ export class Tenpay extends Base implements Payface {
     return { url: r.h5_url } as any;
   }
 
-  async pay_app({
-    unique,
-    subject,
-    fee,
-    client_ip,
-  }: I_pay_mobile_web_tenpay): Promise<O_tenpay_pay_app> {
+  async pay_app({ unique, subject, fee, client_ip }: I_pay_mobile_web_tenpay): Promise<O_tenpay_pay_app> {
     const params: Iapp = {
       out_trade_no: unique || random_unique(),
-      description: subject || "Quick pay",
+      description: subject || 'Quick pay',
       amount: {
         total: to_tenpay_fee(fee as number),
       },
@@ -114,7 +94,7 @@ export class Tenpay extends Base implements Payface {
 
     const r = (await this.sdk.transactions_app(params)) as O_tenpay_app;
 
-    _("transactions_app, O: %o", r);
+    _('transactions_app, O: %o', r);
 
     return {
       mch_id: this.opt.mch_id,
@@ -193,7 +173,7 @@ export class Tenpay extends Base implements Payface {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
       const r: O_tenpay_decipher = this.parse_notification(data);
-      return r.trade_state === "SUCCESS";
+      return r.trade_state === 'SUCCESS';
     } catch (e) {
       console.error(e);
       return false;
@@ -201,25 +181,18 @@ export class Tenpay extends Base implements Payface {
   }
 
   parse_notification({ resource }: T_tenpay_notification): O_tenpay_decipher {
-    return this.sdk.decipher_gcm(
-      resource.ciphertext,
-      resource.associated_data,
-      resource.nonce,
-      this.opt.secret
-    );
+    return this.sdk.decipher_gcm(resource.ciphertext, resource.associated_data, resource.nonce, this.opt.secret);
   }
 
-  async query({
-    unique,
-  }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
+  async query({ unique }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
     const raw = (await this.sdk.query({
       out_trade_no: unique,
     })) as O_tenpay_query;
 
-    _("query, O: %o", raw);
+    _('query, O: %o', raw);
 
     let patch: Partial<T_receipt<T_order_tenpay>> = {};
-    const ok = raw.trade_state === "SUCCESS";
+    const ok = raw.trade_state === 'SUCCESS';
     if (ok) {
       patch = {
         unique: raw.out_trade_no,
@@ -255,32 +228,29 @@ export class Tenpay extends Base implements Payface {
       amount: {
         total: to_tenpay_fee(refund),
         refund: to_tenpay_fee(fee),
-        currency: "CNY",
+        currency: 'CNY',
       },
     } as Irefunds2);
 
-    if (!["PROCESSING", "SUCCESS"].includes(r.status)) {
+    if (!['PROCESSING', 'SUCCESS'].includes(r.status)) {
       throw new Invalid_state_external(`[${r.status}], ${r.message}`);
     }
   }
 
-  async refund_query({
-    unique,
-  }: I_refund_query): Promise<T_refund<T_tenpay_refund>> {
+  async refund_query({ unique }: I_refund_query): Promise<T_refund<T_tenpay_refund>> {
     require_all({ unique });
     const raw = (await this.sdk.find_refunds(unique)) as T_tenpay_refund;
     return {
       raw,
       refund: from_tenpay_fee(raw.amount.refund),
-      ok: raw.status === "SUCCESS",
-      pending: raw.status === "PROCESSING",
+      ok: raw.status === 'SUCCESS',
+      pending: raw.status === 'PROCESSING',
     };
   }
 
   protected validate_opt(opt: T_opt_tenpay) {
     super.validate_opt(opt);
-    const { mch_id, tenpay_cert_content_private, tenpay_cert_content_public } =
-      opt;
+    const { mch_id, tenpay_cert_content_private, tenpay_cert_content_public } = opt;
     require_all({
       mch_id,
       tenpay_cert_content_private,

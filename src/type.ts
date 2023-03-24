@@ -9,8 +9,8 @@ export interface T_object {
  * means different logic and action.
  */
 export enum E_level {
-  internal = "internal",
-  external = "external",
+  internal = 'internal',
+  external = 'external',
 }
 
 export interface T_url_payment {

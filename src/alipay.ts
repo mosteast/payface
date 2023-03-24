@@ -1,34 +1,22 @@
-import AlipaySdk, { AlipaySdkConfig } from "alipay-sdk";
-import AlipayFormData from "alipay-sdk/lib/form";
-import { sign } from "alipay-sdk/lib/util";
-import { parse } from "date-fns";
-import debug from "debug";
-import { values } from "lodash";
-import { URLSearchParams } from "url";
-import { Base } from "./base";
-import { Api_error } from "./error/api_error";
-import {
-  Invalid_argument,
-  Invalid_argument_external,
-} from "./error/invalid_argument";
-import { Invalid_state_external } from "./error/invalid_state";
-import { require_all } from "./error/util/lack_argument";
-import { Verification_error } from "./error/verification_error";
-import { n, round_money } from "./lib/math";
-import {
-  I_query,
-  I_refund,
-  I_transfer,
-  I_verify,
-  Payface,
-  T_opt_payface,
-  T_receipt,
-  T_refund,
-} from "./payface";
-import { T_url_payment } from "./type";
-import { random_unique } from "./util";
+import AlipaySdk, { AlipaySdkConfig } from 'alipay-sdk';
+import AlipayFormData from 'alipay-sdk/lib/form';
+import { sign } from 'alipay-sdk/lib/util';
+import { parse } from 'date-fns';
+import debug from 'debug';
+import { values } from 'lodash';
+import { URLSearchParams } from 'url';
+import { Base } from './base';
+import { Api_error } from './error/api_error';
+import { Invalid_argument, Invalid_argument_external } from './error/invalid_argument';
+import { Invalid_state_external } from './error/invalid_state';
+import { require_all } from './error/util/lack_argument';
+import { Verification_error } from './error/verification_error';
+import { n, round_money } from './lib/math';
+import { I_query, I_refund, I_transfer, I_verify, Payface, T_opt_payface, T_receipt, T_refund } from './payface';
+import { T_url_payment } from './type';
+import { random_unique } from './util';
 
-const _ = debug("payface:tenpay");
+const _ = debug('payface:tenpay');
 
 export class Alipay extends Base implements Payface {
   public sdk!: AlipaySdk;
@@ -74,8 +62,7 @@ export class Alipay extends Base implements Payface {
         break;
       default:
         throw new Invalid_argument_external(
-          "Invalid {auth_type}, should be one of: " +
-            JSON.stringify(values(N_alipay_auth_type))
+          'Invalid {auth_type}, should be one of: ' + JSON.stringify(values(N_alipay_auth_type)),
         );
     }
   }
@@ -83,41 +70,37 @@ export class Alipay extends Base implements Payface {
   sign(action: string, params: any): string {
     const config = this.sdk.config;
     const data = sign(action, params, config);
-    return config.gateway + "?" + new URLSearchParams(data).toString();
+    return config.gateway + '?' + new URLSearchParams(data).toString();
   }
 
   async pay_qrcode(opt: I_pay_qrcode_alipay): Promise<T_url_payment> {
     const { qrcode } = opt;
-    opt.product_code = "FAST_INSTANT_TRADE_PAY";
+    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
     opt.content = {
       qr_pay_mode: 4,
       qrcode_width: qrcode?.width || 160,
     };
-    _("pay_qrcode, I: %o", opt);
+    _('pay_qrcode, I: %o', opt);
     return this.pay_common(opt);
   }
 
   async pay_mobile_web(opt: I_pay_alipay): Promise<T_url_payment> {
-    opt.product_code = "FAST_INSTANT_TRADE_PAY";
-    opt.method = "alipay.trade.wap.pay";
-    _("pay_qrcode, I: %o", opt);
+    opt.product_code = 'FAST_INSTANT_TRADE_PAY';
+    opt.method = 'alipay.trade.wap.pay';
+    _('pay_qrcode, I: %o', opt);
     return this.pay_common(opt);
   }
 
   async pay_app(opt: I_pay_alipay): Promise<T_url_payment> {
     const p = this.build_params(opt);
-    p.bizContent.ProductCode = "QUICK_MSECURITY_PAY";
+    p.bizContent.ProductCode = 'QUICK_MSECURITY_PAY';
     const formData = new AlipayFormData();
-    formData.setMethod("get");
-    formData.addField("bizContent", p.bizContent);
-    formData.addField("notifyUrl", p.notify_url);
-    _("pay_qrcode, I: %o", opt);
-    _("pay_qrcode, formData: %o", formData);
-    const url = (await this.sdk.exec(
-      "alipay.trade.app.pay",
-      {},
-      { formData }
-    )) as string;
+    formData.setMethod('get');
+    formData.addField('bizContent', p.bizContent);
+    formData.addField('notifyUrl', p.notify_url);
+    _('pay_qrcode, I: %o', opt);
+    _('pay_qrcode, formData: %o', formData);
+    const url = (await this.sdk.exec('alipay.trade.app.pay', {}, { formData })) as string;
     return { url }; // https://openapi.alipay.com/gateway.do?app_cert_sn=31...
   }
 
@@ -128,29 +111,22 @@ export class Alipay extends Base implements Payface {
 
     const notify_url = this.opt.notify_url;
     if (!notify_url) {
-      throw new Invalid_argument("Empty {notify_url}");
+      throw new Invalid_argument('Empty {notify_url}');
     }
-    method = method || "alipay.trade.page.pay";
+    method = method || 'alipay.trade.page.pay';
 
     return { url: this.sign(method, this.build_params(opt)) };
   }
 
-  build_params({
-    unique,
-    fee,
-    subject,
-    return_url,
-    content,
-    product_code,
-  }: I_pay_alipay) {
+  build_params({ unique, fee, subject, return_url, content, product_code }: I_pay_alipay) {
     return {
       notify_url: this.opt.notify_url,
-      return_url: return_url || "https://alipay.com",
+      return_url: return_url || 'https://alipay.com',
       bizContent: {
         total_amount: fee,
         out_trade_no: unique || random_unique(),
         product_code,
-        subject: subject || "Quick pay",
+        subject: subject || 'Quick pay',
         ...content,
       },
     };
@@ -159,44 +135,35 @@ export class Alipay extends Base implements Payface {
   /**
    * Transfer money to an alipay account (could withdraw money for user)
    */
-  async transfer({
-    legal_name,
-    fee,
-    tid,
-    unique,
-    subject,
-  }: I_transfer_alipay): Promise<boolean> {
+  async transfer({ legal_name, fee, tid, unique, subject }: I_transfer_alipay): Promise<boolean> {
     require_all({ fee });
-    const r: any = await this.sdk.exec("alipay.fund.trans.uni.transfer", {
+    const r: any = await this.sdk.exec('alipay.fund.trans.uni.transfer', {
       bizContent: {
         out_biz_no: unique || random_unique(),
         trans_amount: fee,
-        product_code: "TRANS_ACCOUNT_NO_PWD",
+        product_code: 'TRANS_ACCOUNT_NO_PWD',
         payee_info: {
-          identity_type: "ALIPAY_LOGON_ID",
+          identity_type: 'ALIPAY_LOGON_ID',
           identity: tid,
           name: legal_name,
         },
-        order_title: subject || "Direct Transfer",
-        biz_scene: "DIRECT_TRANSFER",
+        order_title: subject || 'Direct Transfer',
+        biz_scene: 'DIRECT_TRANSFER',
       },
     });
 
-    if (r.status !== "SUCCESS") {
-      throw new Api_error(
-        "Transfer rejected by Alipay: " + JSON.stringify(r),
-        r
-      );
+    if (r.status !== 'SUCCESS') {
+      throw new Api_error('Transfer rejected by Alipay: ' + JSON.stringify(r), r);
     }
 
     return true;
   }
 
   async get_balance(): Promise<O_get_balance> {
-    const r: any = await this.sdk.exec("alipay.data.bill.balance.query");
+    const r: any = await this.sdk.exec('alipay.data.bill.balance.query');
 
-    if (r.status !== "SUCCESS" && r.msg !== "Success") {
-      throw new Api_error("Rejected by Alipay: " + JSON.stringify(r), r);
+    if (r.status !== 'SUCCESS' && r.msg !== 'Success') {
+      throw new Api_error('Rejected by Alipay: ' + JSON.stringify(r), r);
     }
 
     return {
@@ -209,10 +176,8 @@ export class Alipay extends Base implements Payface {
     return this.sdk.checkNotifySign(data);
   }
 
-  async query({
-    unique,
-  }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {
-    const raw = (await this.sdk.exec("alipay.trade.query", {
+  async query({ unique }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {
+    const raw = (await this.sdk.exec('alipay.trade.query', {
       bizContent: { out_trade_no: unique },
     })) as T_order_alipay;
 
@@ -221,16 +186,12 @@ export class Alipay extends Base implements Payface {
     }
 
     let patch: Partial<T_receipt<T_order_alipay>> = {};
-    const ok = raw.code === "10000";
+    const ok = raw.code === '10000';
     if (ok) {
       patch = {
         unique: raw.outTradeNo,
         fee: round_money(n(raw.totalAmount)).toString(),
-        created_at: parse(
-          raw.sendPayDate,
-          "yyyy-MM-dd HH:mm:ss",
-          new Date()
-        ).toISOString(),
+        created_at: parse(raw.sendPayDate, 'yyyy-MM-dd HH:mm:ss', new Date()).toISOString(),
       };
     }
 
@@ -251,14 +212,14 @@ export class Alipay extends Base implements Payface {
   }
 
   async _refund({ unique, refund }: I_refund): Promise<T_raw_refund> {
-    return this.sdk.exec("alipay.trade.refund", {
+    return this.sdk.exec('alipay.trade.refund', {
       bizContent: { out_trade_no: unique, refund_amount: refund },
     });
   }
 
   async refund(opt: I_refund): Promise<void> {
     const r = await this._refund(opt);
-    if (r.code !== "10000") {
+    if (r.code !== '10000') {
       throw new Invalid_state_external(`[${r.code}], ${r.msg}`);
     }
   }
@@ -266,21 +227,21 @@ export class Alipay extends Base implements Payface {
   async refund_query(opt: I_refund): Promise<T_refund<any>> {
     const raw = await this._refund(opt);
 
-    if (raw.code !== "10000") {
+    if (raw.code !== '10000') {
       throw new Invalid_state_external(`[${raw.code}], ${raw.msg}`);
     }
 
     return {
       raw,
-      ok: raw.code === "10000",
+      ok: raw.code === '10000',
       refund: round_money(raw.refundFee),
     };
   }
 }
 
 export enum N_alipay_auth_type {
-  secret = "secret",
-  cert = "cert",
+  secret = 'secret',
+  cert = 'cert',
 }
 
 export interface T_opt_alipay extends T_opt_payface {
@@ -296,7 +257,7 @@ export interface T_opt_alipay extends T_opt_payface {
 
 export interface I_pay_alipay {
   method?: string;
-  product_code?: "TRANS_ACCOUNT_NO_PWD" | "FAST_INSTANT_TRADE_PAY";
+  product_code?: 'TRANS_ACCOUNT_NO_PWD' | 'FAST_INSTANT_TRADE_PAY';
   return_url?: string;
   content?: any;
 
