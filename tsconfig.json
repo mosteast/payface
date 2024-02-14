@@ -11,7 +11,8 @@
     "moduleResolution": "node",
     "allowJs": true,
     "experimentalDecorators": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["vitest/globals"]
   },
   "exclude": ["node_modules", "build", "tmp", "test", "**/*.test.ts"]
 }
