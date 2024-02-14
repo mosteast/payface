@@ -3,7 +3,7 @@ import { Optional } from 'utility-types';
 import Wx from 'wechatpay-node-v3';
 import { Iapp, Ih5, Inative, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
 import { Base } from './base';
-import { Invalid_state_external } from './error/invalid_state';
+import { Invalid_state, Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
 import { n, round_int, round_money } from './lib/math';
@@ -54,6 +54,9 @@ export class Tenpay extends Base implements Payface {
     };
 
     const r = (await this.sdk.transactions_native(params)) as O_tenpay_qrcode;
+    if (r.status !== 200) {
+      throw new Invalid_state((r as any).message);
+    }
     return { url: r.code_url } as any;
   }
 
@@ -351,15 +354,15 @@ export interface O_tenpay_pay_app {
 
 /**
  {
-  status: 200,
-  appid: 'wx41d141be52130624',
-  partnerid: '1373091502',
-  package: 'Sign=WXPay',
-  timestamp: '1668684236',
-  noncestr: 'aq26zljyc4c',
-  prepayid: 'wx17192356724129d89ec3f1c29ac6e70000',
-  sign: 'Trgkyu8VQz/f+QLwyf7gl4B61ti0z8T4FQpBRxzHY9XlY1StfaauPsA46kWvkzWS6WjhQZbxhTFqVCy9ZQYOh0HRJ/SxWeL/6ecPUuKOkfQFSL+K3c1L5xzT7+NX++Pk/7nuayYh4dPF1aDktDE1FSQRvnshS8RBzdx4QnZBapJZ6EGkrKyTfD1G1eBJ/TnpMATLHenLn/kf93E93kOcyZnGJULn9zZFGQDj7U3tJqhloq5ZySJMAnJ5oIhIpxSTA0Sxf6pDzpi3SWtRF46+KcOV4g2MkFa5TMIOa+HTAemD+IEDfu6R81dfQP0LrxX9dZBBotmMOYUAiINFsNVhyA=='
-}
+ status: 200,
+ appid: 'wx41d141be52130624',
+ partnerid: '1373091502',
+ package: 'Sign=WXPay',
+ timestamp: '1668684236',
+ noncestr: 'aq26zljyc4c',
+ prepayid: 'wx17192356724129d89ec3f1c29ac6e70000',
+ sign: 'Trgkyu8VQz/f+QLwyf7gl4B61ti0z8T4FQpBRxzHY9XlY1StfaauPsA46kWvkzWS6WjhQZbxhTFqVCy9ZQYOh0HRJ/SxWeL/6ecPUuKOkfQFSL+K3c1L5xzT7+NX++Pk/7nuayYh4dPF1aDktDE1FSQRvnshS8RBzdx4QnZBapJZ6EGkrKyTfD1G1eBJ/TnpMATLHenLn/kf93E93kOcyZnGJULn9zZFGQDj7U3tJqhloq5ZySJMAnJ5oIhIpxSTA0Sxf6pDzpi3SWtRF46+KcOV4g2MkFa5TMIOa+HTAemD+IEDfu6R81dfQP0LrxX9dZBBotmMOYUAiINFsNVhyA=='
+ }
  */
 export interface O_tenpay_app {
   status: number;
@@ -387,28 +390,28 @@ export interface O_tenpay_qrcode {
 
 /**
  {
-    status: 200,
-    amount: {
-      currency: 'CNY',
-      payer_currency: 'CNY',
-      payer_total: 4900,
-      total: 4900
-    },
-    appid: 'wx41d141be52130624',
-    attach: '',
-    bank_type: 'OTHERS',
-    mchid: '1373091502',
-    out_trade_no: 'B3KH5937KT7UH13286UT3PH0PT84',
-    payer: {
-      openid: 'oIYGjt4kQCrCBG4kiolES4fjJzcw'
-    },
-    promotion_detail: [],
-    success_time: '2019-10-28T15:34:08+08:00',
-    trade_state: 'SUCCESS',
-    trade_state_desc: '支付成功',
-    trade_type: 'NATIVE',
-    transaction_id: '4200000404201910288390439123'
-  }
+ status: 200,
+ amount: {
+ currency: 'CNY',
+ payer_currency: 'CNY',
+ payer_total: 4900,
+ total: 4900
+ },
+ appid: 'wx41d141be52130624',
+ attach: '',
+ bank_type: 'OTHERS',
+ mchid: '1373091502',
+ out_trade_no: 'B3KH5937KT7UH13286UT3PH0PT84',
+ payer: {
+ openid: 'oIYGjt4kQCrCBG4kiolES4fjJzcw'
+ },
+ promotion_detail: [],
+ success_time: '2019-10-28T15:34:08+08:00',
+ trade_state: 'SUCCESS',
+ trade_state_desc: '支付成功',
+ trade_type: 'NATIVE',
+ transaction_id: '4200000404201910288390439123'
+ }
  */
 export interface O_tenpay_query {
   status: number;
@@ -434,20 +437,20 @@ export interface O_tenpay_query {
 
 /**
  {
-    id: "c3f65444-8a57-5b56-869e-92cbddc1df33",
-    create_time: "2022-11-17T20:38:59+08:00",
-    resource_type: "encrypt-resource",
-    event_type: "TRANSACTION.SUCCESS",
-    summary: "支付成功",
-    resource: {
-      original_type: "transaction",
-      aithm: "AEAD_AES_256_GCM",
-      ciphertext:
-        "8budXaFzlY4cZaNnwovQTwOJjSSY1TulSVGAtnP2bh9Oc/09e+9MnEK+OJF047va3BlMhdDnfmXysmilO/Xf6LpksZfYBNn2w0hzOWIwk7vtRW9hk1S/8+rwj8Aj6+NH0PvFxzBqAsOVMvvMYCvt/FI5SVKefzgHNfJ74UGNezARztqZt/BZFQF+XTFgEduwanvWR6HrCcpy5n1frB9B+HjfKS3ZCsqVhHSvURAS+Gc45Pgv/uGDFBM/sogoYrlf5kezM5mZchPDuZjkQp7+fyl6ONW8b/34RYTlHCxq5LB1octHknGMdD9iC7BgHYG6rqnCUIA//al3hHngXyK1urnIfmi3iFNfDRIxNXHRZJ2pDmwXuxAQEqpJ6sz6vNCcSPazQwqRqKQD3m889qzKpC9yX73xOd1AwUyDKkqkUWtcNP/S82G2eizFMKIqrp4pOaSBUIbxIitAAxtyFeqVefxad1HcZnPmI6C4cgPW5+k/YRvFIUaCapT16PV3PEZVRvesQRA5ney5S3NXcz9KtWNQaePpxqzr1+LSRZtONizXFDm7oAYCnS2uT7s=",
-      associated_data: "transaction",
-      nonce: "b43YbME3roU2",
-    },
-  }
+ id: "c3f65444-8a57-5b56-869e-92cbddc1df33",
+ create_time: "2022-11-17T20:38:59+08:00",
+ resource_type: "encrypt-resource",
+ event_type: "TRANSACTION.SUCCESS",
+ summary: "支付成功",
+ resource: {
+ original_type: "transaction",
+ aithm: "AEAD_AES_256_GCM",
+ ciphertext:
+ "8budXaFzlY4cZaNnwovQTwOJjSSY1TulSVGAtnP2bh9Oc/09e+9MnEK+OJF047va3BlMhdDnfmXysmilO/Xf6LpksZfYBNn2w0hzOWIwk7vtRW9hk1S/8+rwj8Aj6+NH0PvFxzBqAsOVMvvMYCvt/FI5SVKefzgHNfJ74UGNezARztqZt/BZFQF+XTFgEduwanvWR6HrCcpy5n1frB9B+HjfKS3ZCsqVhHSvURAS+Gc45Pgv/uGDFBM/sogoYrlf5kezM5mZchPDuZjkQp7+fyl6ONW8b/34RYTlHCxq5LB1octHknGMdD9iC7BgHYG6rqnCUIA//al3hHngXyK1urnIfmi3iFNfDRIxNXHRZJ2pDmwXuxAQEqpJ6sz6vNCcSPazQwqRqKQD3m889qzKpC9yX73xOd1AwUyDKkqkUWtcNP/S82G2eizFMKIqrp4pOaSBUIbxIitAAxtyFeqVefxad1HcZnPmI6C4cgPW5+k/YRvFIUaCapT16PV3PEZVRvesQRA5ney5S3NXcz9KtWNQaePpxqzr1+LSRZtONizXFDm7oAYCnS2uT7s=",
+ associated_data: "transaction",
+ nonce: "b43YbME3roU2",
+ },
+ }
  */
 export interface T_tenpay_notification {
   id: string;
@@ -466,24 +469,24 @@ export interface T_tenpay_notification {
 
 /**
  {
-    mchid: '1373091502',
-    appid: 'wx4ba9f9e08a7898a3',
-    out_trade_no: 'R139326100',
-    transaction_id: '4200001640202211171860369532',
-    trade_type: 'NATIVE',
-    trade_state: 'SUCCESS',
-    trade_state_desc: '支付成功',
-    bank_type: 'OTHERS',
-    attach: '',
-    success_time: '2022-11-17T20:38:59+08:00',
-    payer: { openid: 'oC3QX6kArsXfGyjRKwVnEOB0hgVY' },
-    amount: {
-      total: 10,
-      payer_total: 10,
-      currency: 'CNY',
-      payer_currency: 'CNY'
-    }
-  }
+ mchid: '1373091502',
+ appid: 'wx4ba9f9e08a7898a3',
+ out_trade_no: 'R139326100',
+ transaction_id: '4200001640202211171860369532',
+ trade_type: 'NATIVE',
+ trade_state: 'SUCCESS',
+ trade_state_desc: '支付成功',
+ bank_type: 'OTHERS',
+ attach: '',
+ success_time: '2022-11-17T20:38:59+08:00',
+ payer: { openid: 'oC3QX6kArsXfGyjRKwVnEOB0hgVY' },
+ amount: {
+ total: 10,
+ payer_total: 10,
+ currency: 'CNY',
+ payer_currency: 'CNY'
+ }
+ }
  */
 export interface O_tenpay_decipher {
   mchid: string;
