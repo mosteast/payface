@@ -92,7 +92,7 @@ describe('cert', () => {
 
   it('transfer', async () => {
     const r = await client.transfer({
-      fee: parseFloat(fee!) || 0.1,
+      fee: fee! || '0.1',
       subject: 'Test order',
       legal_name,
       tid,
@@ -130,7 +130,7 @@ describe('cert', () => {
   describe('refund', () => {
     it('common', async () => {
       const refund_unique = process.env.alipay_refund_unique as string;
-      const refund_refund = parseFloat(process.env.alipay_refund_fee as any);
+      const refund_refund = process.env.alipay_refund_fee as string;
       await client.refund({ unique: refund_unique, refund: refund_refund });
     });
   });
@@ -138,7 +138,7 @@ describe('cert', () => {
   describe('refund_query', () => {
     it('common', async () => {
       const refund_unique = process.env.alipay_refund_unique as string;
-      const refund_refund = parseFloat(process.env.alipay_refund_fee as any);
+      const refund_refund = process.env.alipay_refund_fee as any;
       const r = await client.refund_query({
         unique: refund_unique,
         refund: refund_refund,

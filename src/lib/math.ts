@@ -14,10 +14,6 @@ export function n_dp(x: I_bignumber, dp: number): Decimal {
   return n(x).toDecimalPlaces(dp);
 }
 
-export function n_money(x: I_bignumber, dp = 2): Decimal {
-  return n_dp(x, dp);
-}
-
 export function n_int(x: I_bignumber, dp = 0): Decimal {
   return n_dp(x, dp);
 }
@@ -26,6 +22,11 @@ export function round_int(x: I_bignumber): number {
   return n_int(x).toNumber();
 }
 
-export function round_money(x: I_bignumber, dp?: number): number {
-  return n_money(x, dp).toNumber();
+export function n_money(x: I_bignumber, dp?: number): Decimal {
+  dp = dp ?? 15;
+  return n_dp(x, dp);
+}
+
+export function round_money(x: I_bignumber, dp?: number): string {
+  return n_money(x, dp).toString();
 }

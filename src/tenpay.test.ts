@@ -27,7 +27,7 @@ beforeEach(() => {
 
 it('pay_qrcode', async () => {
   const r = await client.pay_qrcode({
-    fee: 0.1,
+    fee: '0.1',
     unique: 'test_' + nanoid(),
     subject: 'Test order',
     client_ip: '123.139.93.107',
@@ -38,7 +38,7 @@ it('pay_qrcode', async () => {
 
 it('mobile_web', async () => {
   const r = await client.pay_mobile_web({
-    fee: 0.1,
+    fee: '0.1',
     unique: 'test_' + nanoid(),
     subject: 'Test order',
     client_ip: '123.139.93.107',
@@ -50,7 +50,7 @@ it('mobile_web', async () => {
 
 it('pay_app', async () => {
   const r = await client.pay_app({
-    fee: 0.1,
+    fee: '0.1',
     unique: 'test_' + nanoid(),
     subject: 'Test order',
     client_ip: '123.139.93.107',
@@ -85,8 +85,8 @@ describe('order', () => {
 describe('refund', () => {
   it('common', async () => {
     const refund_unique = process.env.tenpay_refund_unique as string;
-    const refund_fee = parseFloat(process.env.tenpay_refund_fee as any);
-    const refund_refund = parseFloat(process.env.tenpay_refund_fee as any);
+    const refund_fee = process.env.tenpay_refund_fee as any;
+    const refund_refund = process.env.tenpay_refund_fee as any;
     if (!refund_unique || !refund_fee || !refund_refund) {
       console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
       return;
@@ -102,7 +102,7 @@ describe('refund', () => {
 describe('refund_query', () => {
   it('common', async () => {
     const refund_unique = process.env.tenpay_refund_unique as string;
-    const refund_refund = parseFloat(process.env.tenpay_refund_fee as any);
+    const refund_refund = process.env.tenpay_refund_fee as any;
     if (!refund_unique || !refund_refund) {
       console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
       return;

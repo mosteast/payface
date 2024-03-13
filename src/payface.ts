@@ -64,14 +64,14 @@ export interface T_opt_payface {
 }
 
 export interface I_pay {
-  fee: number;
+  fee: string;
   unique?: string;
   subject?: string;
   notify_url?: string;
 }
 
 export interface I_transfer {
-  fee: number;
+  fee: string;
   tid: string; // target id in 3rd party platform (like alipay id or wechat id)
   unique?: string;
   subject?: string;
@@ -85,7 +85,7 @@ export interface I_refund extends I_query {
   /**
    * Refund value (should ≤ than fee)
    */
-  refund: number;
+  refund: string;
 }
 
 export interface I_refund_query {
@@ -97,6 +97,6 @@ export interface I_verify extends I_query {}
 export interface T_refund<T> {
   ok: boolean;
   pending?: boolean;
-  refund: number;
+  refund: string;
   raw: T;
 }

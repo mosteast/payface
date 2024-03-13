@@ -45,7 +45,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
       amount: {
-        total: to_tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee!),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -65,7 +65,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
       amount: {
-        total: to_tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee!),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -87,7 +87,7 @@ export class Tenpay extends Base implements Payface {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
       amount: {
-        total: to_tenpay_fee(fee as number),
+        total: to_tenpay_fee(fee!),
       },
       notify_url: this.opt.notify_url as string,
       scene_info: {
@@ -224,7 +224,7 @@ export class Tenpay extends Base implements Payface {
 
   async refund({ unique, fee, refund }: I_refund_tenpay): Promise<void> {
     require_all({ unique, fee });
-    let r;
+    let r: any;
     r = await this.sdk.refunds({
       out_trade_no: unique,
       out_refund_no: `${unique}_refund`,
@@ -242,10 +242,10 @@ export class Tenpay extends Base implements Payface {
 
   async refund_query({ unique }: I_refund_query): Promise<T_refund<T_tenpay_refund>> {
     require_all({ unique });
-    const raw = (await this.sdk.find_refunds(unique)) as T_tenpay_refund;
+    const raw = (await this.sdk.find_refunds(unique)) as any;
     return {
       raw,
-      refund: from_tenpay_fee(raw.amount.refund),
+      refund: from_tenpay_fee(raw.amount.refund.toString()),
       ok: raw.status === 'SUCCESS',
       pending: raw.status === 'PROCESSING',
     };
@@ -282,11 +282,11 @@ export interface I_pay_mobile_web_tenpay extends Optional<I_pay_common> {
   client_ip: string;
 }
 
-export function to_tenpay_fee(fee: number) {
+export function to_tenpay_fee(fee: string) {
   return round_int(n(fee).times(100));
 }
 
-export function from_tenpay_fee(fee: number) {
+export function from_tenpay_fee(fee: string) {
   return round_money(n(fee).div(100));
 }
 
@@ -517,7 +517,7 @@ export interface T_tenpay_refund {
     payer_refund: number;
     payer_total: number;
     refund: number;
-    refund_fee: number;
+    refund_fee: string;
     settlement_refund: number;
     settlement_total: number;
     total: number;
@@ -538,5 +538,5 @@ export interface I_refund_tenpay extends I_refund {
   /**
    * Total fee
    */
-  fee: number;
+  fee: string;
 }
