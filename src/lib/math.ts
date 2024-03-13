@@ -30,3 +30,10 @@ export function n_money(x: I_bignumber, dp?: number): Decimal {
 export function round_money(x: I_bignumber, dp?: number): string {
   return n_money(x, dp).toString();
 }
+
+/**
+ * Round to "分" (CNY)
+ */
+export function round_cny(x: I_bignumber): string {
+  return n_money(x, 2).toString();
+}

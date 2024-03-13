@@ -11,7 +11,7 @@ import { Invalid_argument, Invalid_argument_external } from './error/invalid_arg
 import { Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
-import { n, round_money } from './lib/math';
+import { n, round_cny } from './lib/math';
 import { I_query, I_refund, I_transfer, I_verify, Payface, T_opt_payface, T_receipt, T_refund } from './payface';
 import { T_url_payment } from './type';
 import { random_unique } from './util';
@@ -123,7 +123,7 @@ export class Alipay extends Base implements Payface {
       notify_url: this.opt.notify_url,
       return_url: return_url || 'https://alipay.com',
       bizContent: {
-        total_amount: fee,
+        total_amount: round_cny(fee),
         out_trade_no: unique || random_unique(),
         product_code,
         subject: subject || 'Quick pay',
@@ -140,7 +140,7 @@ export class Alipay extends Base implements Payface {
     const r: any = await this.sdk.exec('alipay.fund.trans.uni.transfer', {
       bizContent: {
         out_biz_no: unique || random_unique(),
-        trans_amount: fee,
+        trans_amount: round_cny(fee),
         product_code: 'TRANS_ACCOUNT_NO_PWD',
         payee_info: {
           identity_type: 'ALIPAY_LOGON_ID',
@@ -190,7 +190,7 @@ export class Alipay extends Base implements Payface {
     if (ok) {
       patch = {
         unique: raw.outTradeNo,
-        fee: round_money(n(raw.totalAmount)).toString(),
+        fee: round_cny(n(raw.totalAmount)).toString(),
         created_at: parse(raw.sendPayDate, 'yyyy-MM-dd HH:mm:ss', new Date()).toISOString(),
       };
     }
@@ -234,7 +234,7 @@ export class Alipay extends Base implements Payface {
     return {
       raw,
       ok: raw.code === '10000',
-      refund: round_money(raw.refundFee),
+      refund: round_cny(raw.refundFee),
     };
   }
 }
