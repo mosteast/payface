@@ -8,6 +8,7 @@ const mchid = process.env.tenpay_mchid as string;
 const secret = process.env.tenpay_secret as string;
 const tenpay_cert_content_public = readFileSync(__dirname + '/test_asset/tenpay/apiclient_cert.pem');
 const tenpay_cert_content_private = readFileSync(__dirname + '/test_asset/tenpay/apiclient_key.pem');
+const openid = process.env.tenpay_openid as string;
 
 if (!id || !mchid || !secret) {
   console.warn(`Empty env: {tenpay_id:${id}} or {tenpay_mchid:${mchid}} or {tenpay_secret:${secret}}`);
@@ -66,7 +67,7 @@ it('pay_jsapi', async () => {
     unique: 'test_' + nanoid(),
     subject: 'Test order',
     client_ip: '123.139.93.107',
-    openid: 'drEc8QfY',
+    openid,
   });
   expect(r.prepay_id).toBeTruthy();
   expect(r.timestamp_sign).toBeTruthy();
