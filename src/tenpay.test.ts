@@ -60,6 +60,19 @@ it('pay_app', async () => {
   expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
   console.info('prepay_id', r.prepay_id);
 });
+it('pay_jsapi', async () => {
+  const r = await client.pay_jsapi({
+    fee: '0.1',
+    unique: 'test_' + nanoid(),
+    subject: 'Test order',
+    client_ip: '123.139.93.107',
+    openid: 'drEc8QfY',
+  });
+  expect(r.prepay_id).toBeTruthy();
+  expect(r.timestamp_sign).toBeTruthy();
+  expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
+  console.info('prepay_id', r.prepay_id);
+});
 
 describe('order', () => {
   const unique = process.env.tenpay_order_id;

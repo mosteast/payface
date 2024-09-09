@@ -1,9 +1,9 @@
 import debug from 'debug';
 import { Optional } from 'utility-types';
 import Wx from 'wechatpay-node-v3';
-import { Iapp, Ih5, Inative, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
+import { Iapp, Ih5, Ijsapi, Inative, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
 import { Base } from './base';
-import { Invalid_state, Invalid_state_external } from './error/invalid_state';
+import { Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
 import { n, round_int, round_money } from './lib/math';
@@ -53,9 +53,12 @@ export class Tenpay extends Base implements Payface {
       },
     };
 
-    const r = (await this.sdk.transactions_native(params)) as O_tenpay_qrcode;
+    const r = (await this.sdk.transactions_native(params)) as any;
+    // { status: 200, code_url: 'weixin://wxpay/bizpayurl?pr=9xFPmlUzz' }
+    _('transactions_native, O: %o', r);
     if (r.status !== 200) {
-      throw new Invalid_state((r as any).message);
+      console.error(r);
+      throw new Invalid_state_external(r.code + ': ' + r.message);
     }
     return { url: r.code_url } as any;
   }
@@ -78,11 +81,20 @@ export class Tenpay extends Base implements Payface {
       },
     };
 
-    const r = (await this.sdk.transactions_h5(params)) as O_tenpay_mweb;
+    const r = (await this.sdk.transactions_h5(params)) as any;
+    // {
+    // status: 200,
+    // h5_url: 'https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx051840206120147833cf4bcfcef12b0000&package=2056162962'
+    // }
+    _('transactions_h5, O: %o', r);
+    if (r.status !== 200) {
+      console.error(r);
+      throw new Invalid_state_external(r.code + ': ' + r.message);
+    }
     return { url: r.h5_url } as any;
   }
 
-  async pay_app({ unique, subject, fee, client_ip }: I_pay_mobile_web_tenpay): Promise<O_tenpay_pay_app> {
+  async pay_app({ unique, subject, fee, client_ip }: I_pay_app_tenpay): Promise<O_tenpay_pay_app> {
     const params: Iapp = {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
@@ -95,10 +107,22 @@ export class Tenpay extends Base implements Payface {
       },
     };
 
-    const r = (await this.sdk.transactions_app(params)) as O_tenpay_app;
-
+    const r = (await this.sdk.transactions_app(params)) as any;
+    //   {
+    //     status: 200,
+    //     appid: 'appid',
+    //     partnerid: '商户号',
+    //     prepayid: 'wx061559014727156ae9554bb17af9d30000',
+    //     package: 'Sign=WXPay',
+    //     noncestr: 'm8dbyuytqul',
+    //     timestamp: '1609919941',
+    //     sign: 'PLENslMbldtSbtj5mDpX0N78vMMSw7CFPEptSpm+6YktXDa5Qso6KJ/uRCbNCmvM7z5adLoEdTmzjB/mjr5Ow=='
+    //   }
     _('transactions_app, O: %o', r);
-
+    if (r.status !== 200) {
+      console.error(r);
+      throw new Invalid_state_external(r.code + ': ' + r.message);
+    }
     return {
       mch_id: this.opt.mch_id,
       appid: this.opt.id,
@@ -109,6 +133,52 @@ export class Tenpay extends Base implements Payface {
        * Timestamp to sign
        */
       timestamp_sign: r.timestamp,
+    };
+  }
+
+  async pay_jsapi({ unique, subject, fee, client_ip, openid }: I_pay_jsapi_tenpay): Promise<O_tenpay_pay_jsapi> {
+    const params: Ijsapi = {
+      out_trade_no: unique || random_unique(),
+      description: subject || 'Quick pay',
+      amount: {
+        total: to_tenpay_fee(fee!),
+      },
+      notify_url: this.opt.notify_url as string,
+      scene_info: {
+        payer_client_ip: client_ip as string,
+      },
+      payer: {
+        openid,
+      },
+    };
+
+    const r = (await this.sdk.transactions_jsapi(params)) as any;
+    //   {
+    //     appId: 'appid',
+    //     timeStamp: '1609918952',
+    //     nonceStr: 'y8aw9vrmx8c',
+    //     package: 'prepay_id=wx0615423208772665709493edbb4b330000',
+    //     signType: 'RSA',
+    //     paySign: 'JnFXsT4VNzlcamtmgOHhziw7JqdnUS9qJ5W6vmAluk3Q2nska7rxYB4hvcl0BTFAB1PBEnHEhCsUbs5zKPEig=='
+    //   }
+    _('transactions_jsapi, O: %o', r);
+
+    if (r.status !== 200) {
+      console.error(r);
+      throw new Invalid_state_external(r.code + ': ' + r.message);
+    }
+
+    return {
+      mch_id: this.opt.mch_id,
+      appid: this.opt.id,
+      nonce_str: r.nonceStr,
+      sign: r.paySign,
+      prepay_id: r.package.replace('prepay_id=', ''),
+      sign_type: r.signType,
+      /**
+       * Timestamp to sign
+       */
+      timestamp_sign: r.timeStamp,
     };
   }
 
@@ -282,6 +352,12 @@ export interface I_pay_mobile_web_tenpay extends Optional<I_pay_common> {
   client_ip: string;
 }
 
+export interface I_pay_app_tenpay extends I_pay_mobile_web_tenpay {}
+
+export interface I_pay_jsapi_tenpay extends I_pay_mobile_web_tenpay {
+  openid: string;
+}
+
 export function to_tenpay_fee(fee: string) {
   return round_int(n(fee).times(100));
 }
@@ -350,6 +426,11 @@ export interface O_tenpay_pay_app {
    * Timestamp to sign
    */
   timestamp_sign?: string;
+}
+
+export interface O_tenpay_pay_jsapi extends O_tenpay_pay_app {
+  sign_type: string;
+  sign: string;
 }
 
 /**
