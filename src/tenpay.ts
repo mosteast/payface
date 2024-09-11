@@ -64,6 +64,7 @@ export class Tenpay extends Base implements Payface {
   }
 
   async pay_mobile_web({ unique, subject, fee, client_ip }: I_pay_mobile_web_tenpay): Promise<T_url_payment> {
+    require_all({ fee, client_ip });
     const params: Ih5 = {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
@@ -95,6 +96,8 @@ export class Tenpay extends Base implements Payface {
   }
 
   async pay_app({ unique, subject, fee, client_ip }: I_pay_app_tenpay): Promise<O_tenpay_pay_app> {
+    require_all({ fee, client_ip });
+
     const params: Iapp = {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
@@ -137,6 +140,7 @@ export class Tenpay extends Base implements Payface {
   }
 
   async pay_jsapi({ unique, subject, fee, client_ip, openid }: I_pay_jsapi_tenpay): Promise<O_tenpay_pay_jsapi> {
+    require_all({ fee, client_ip, openid });
     const params: Ijsapi = {
       out_trade_no: unique || random_unique(),
       description: subject || 'Quick pay',
