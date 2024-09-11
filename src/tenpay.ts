@@ -54,14 +54,16 @@ export class Tenpay extends Base implements Payface {
       },
     };
 
-    const r = (await this.sdk.transactions_native(params)) as any;
-    // { status: 200, code_url: 'weixin://wxpay/bizpayurl?pr=9xFPmlUzz' }
+    _('transactions_native, I: %o', params);
+    const res = (await this.sdk.transactions_native(params)) as any;
+    const r = res.data;
+    // { status: 200, data: { code_url: 'weixin://wxpay/bizpayurl?pr=mESVwYIz1' } }
     _('transactions_native, O: %o', r);
-    if (r.status !== 200) {
+    if (res.status !== 200) {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
-    return { url: r.code_url } as any;
+    return { url: r?.code_url } as any;
   }
 
   async pay_mobile_web({ unique, subject, fee, client_ip }: I_pay_mobile_web_tenpay): Promise<T_url_payment> {
@@ -82,14 +84,15 @@ export class Tenpay extends Base implements Payface {
         },
       },
     };
-
-    const r = (await this.sdk.transactions_h5(params)) as any;
+    _('transactions_h5, I: %o', params);
+    const res = (await this.sdk.transactions_h5(params)) as any;
+    const r = res.data;
     // {
     // status: 200,
     // h5_url: 'https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx051840206120147833cf4bcfcef12b0000&package=2056162962'
     // }
     _('transactions_h5, O: %o', r);
-    if (r.status !== 200) {
+    if (res.status !== 200) {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
@@ -110,8 +113,9 @@ export class Tenpay extends Base implements Payface {
         payer_client_ip: client_ip as string,
       },
     };
-
-    const r = (await this.sdk.transactions_app(params)) as any;
+    _('transactions_app, I: %o', params);
+    const res = (await this.sdk.transactions_app(params)) as any;
+    const r = res.data;
     //   {
     //     status: 200,
     //     appid: 'appid',
@@ -123,7 +127,7 @@ export class Tenpay extends Base implements Payface {
     //     sign: 'PLENslMbldtSbtj5mDpX0N78vMMSw7CFPEptSpm+6YktXDa5Qso6KJ/uRCbNCmvM7z5adLoEdTmzjB/mjr5Ow=='
     //   }
     _('transactions_app, O: %o', r);
-    if (r.status !== 200) {
+    if (res.status !== 200) {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
@@ -157,8 +161,9 @@ export class Tenpay extends Base implements Payface {
         openid,
       },
     };
-
-    const r = (await this.sdk.transactions_jsapi(params)) as any;
+    _('transactions_jsapi, I: %o', params);
+    const res = (await this.sdk.transactions_jsapi(params)) as any;
+    const r = res.data;
     //   {
     //     appId: 'appid',
     //     timeStamp: '1609918952',
@@ -169,7 +174,7 @@ export class Tenpay extends Base implements Payface {
     //   }
     _('transactions_jsapi, O: %o', r);
 
-    if (r.status !== 200) {
+    if (res.status !== 200) {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
@@ -179,6 +184,7 @@ export class Tenpay extends Base implements Payface {
       appid: this.opt.id,
       nonce_str: r.nonceStr,
       sign: r.paySign,
+      package: r.package,
       prepay_id: r.package.replace('prepay_id=', ''),
       sign_type: r.signType,
       /**
@@ -429,6 +435,7 @@ export interface O_tenpay_pay_app extends O_pay {
   nonce_str: string;
   sign: string;
   prepay_id: string;
+  package: string;
   /**
    * Timestamp to sign
    */
@@ -468,12 +475,11 @@ export interface O_tenpay_mweb {
   h5_url: string;
 }
 
-/**
- { status: 200, code_url: 'weixin://wxpay/bizpayurl?pr=wPO2oKkzz' }
- */
 export interface O_tenpay_qrcode {
   status: number;
-  code_url: string;
+  data: {
+    code_url: string;
+  };
 }
 
 /**

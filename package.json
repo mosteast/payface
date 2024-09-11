@@ -1,6 +1,6 @@
 {
   "name": "payface",
-  "version": "0.6.83",
+  "version": "0.6.11",
   "description": "Payment interface for alipay and wechat",
   "homepage": "https://github.com/mosteast/payface#readme",
   "repository": "github:mosteast/payface",
@@ -26,7 +26,7 @@
     "debug": "^4.3.4",
     "decimal.js": "^10.4.3",
     "nanoid": "^3.3.7",
-    "wechatpay-node-v3": "^2.1.8"
+    "wechatpay-node-v3": "^2.2.1"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",
