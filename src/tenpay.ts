@@ -13,6 +13,7 @@ import {
   I_refund,
   I_refund_query,
   I_verify,
+  O_pay,
   Payface,
   T_opt_payface,
   T_receipt,
@@ -92,7 +93,7 @@ export class Tenpay extends Base implements Payface {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
-    return { url: r.h5_url } as any;
+    return { url: r.h5_url, raw: r };
   }
 
   async pay_app({ unique, subject, fee, client_ip }: I_pay_app_tenpay): Promise<O_tenpay_pay_app> {
@@ -136,6 +137,7 @@ export class Tenpay extends Base implements Payface {
        * Timestamp to sign
        */
       timestamp_sign: r.timestamp,
+      raw: r,
     };
   }
 
@@ -183,6 +185,7 @@ export class Tenpay extends Base implements Payface {
        * Timestamp to sign
        */
       timestamp_sign: r.timeStamp,
+      raw: r,
     };
   }
 
@@ -420,7 +423,7 @@ export interface T_order_tenpay {
   sign: string;
 }
 
-export interface O_tenpay_pay_app {
+export interface O_tenpay_pay_app extends O_pay {
   mch_id: string;
   appid: string;
   nonce_str: string;

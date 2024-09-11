@@ -70,6 +70,13 @@ export interface I_pay {
   notify_url?: string;
 }
 
+export interface O_pay {
+  /**
+   * Raw response
+   */
+  raw: any;
+}
+
 export interface I_transfer {
   fee: string;
   tid: string; // target id in 3rd party platform (like alipay id or wechat id)

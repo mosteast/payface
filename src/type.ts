@@ -19,4 +19,8 @@ export interface T_url_payment {
    * Timestamp to sign
    */
   timestamp_sign?: string;
+  /**
+   * Raw response
+   */
+  raw?: any;
 }
