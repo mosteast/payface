@@ -283,7 +283,12 @@ export class Tenpay extends Base implements Payface {
   }
 
   parse_notification({ resource }: T_tenpay_notification): O_tenpay_decipher {
-    return this.sdk.decipher_gcm(resource.ciphertext, resource.associated_data, resource.nonce, this.opt.key_v3);
+    return this.sdk.decipher_gcm(
+      resource.ciphertext,
+      resource.associated_data,
+      resource.nonce,
+      this.opt.key_v3 || this.opt.secret,
+    );
   }
 
   async query({ unique }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
