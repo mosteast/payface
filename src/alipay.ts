@@ -176,7 +176,12 @@ export class Alipay extends Base implements Payface {
   }
 
   async verify_notify_sign(data: any): Promise<boolean> {
-    return this.sdk.checkNotifySign(data);
+    const r = await this.sdk.checkNotifySign(data);
+    if (!r) {
+      throw new Api_error('Invalid sign');
+    }
+
+    return true;
   }
 
   async query({ unique }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {

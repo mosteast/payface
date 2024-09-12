@@ -3,6 +3,7 @@ import { Optional } from 'utility-types';
 import Wx from 'wechatpay-node-v3';
 import { Iapp, Ih5, Ijsapi, Inative, Ipay, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
 import { Base } from './base';
+import { Invalid_argument_external } from './error/invalid_argument';
 import { Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
@@ -58,7 +59,6 @@ export class Tenpay extends Base implements Payface {
     };
 
     _('transactions_native, I: %o', params);
-    _('sdk: %o', this.sdk);
 
     const res = (await this.sdk.transactions_native(params)) as any;
     const r = res.data;
@@ -90,7 +90,6 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_h5, I: %o', params);
-    _('sdk: %o', this.sdk);
 
     const res = (await this.sdk.transactions_h5(params)) as any;
     const r = res.data;
@@ -121,7 +120,6 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_app, I: %o', params);
-    _('sdk: %o', this.sdk);
 
     const res = (await this.sdk.transactions_app(params)) as any;
     const r = res.data;
@@ -172,7 +170,6 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_jsapi, I: %o', params);
-    _('sdk: %o', this.sdk);
 
     const res = (await this.sdk.transactions_jsapi(params)) as any;
     const r = res.data;
@@ -266,20 +263,27 @@ export class Tenpay extends Base implements Payface {
   //   return r;
   // }
 
-  async verify_notify_sign(data: T_tenpay_notification): Promise<boolean> {
+  async verify_notify_sign(data: T_tenpay_notification): Promise<O_tenpay_decipher> {
+    let r: O_tenpay_decipher | undefined = undefined;
     try {
       // About this 'middleware_pay', @see:
       // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      const r: O_tenpay_decipher = this.parse_notification(data);
-      return r.trade_state === 'SUCCESS';
+      r = this.parse_notification(data);
     } catch (e) {
       console.error(e);
-      return false;
     }
+
+    _('verify_notify_sign, parsed: %o', r);
+
+    if (r?.trade_state !== 'SUCCESS') {
+      throw new Invalid_argument_external(`Trade fail, state: ${r?.trade_state}`);
+    }
+
+    return r;
   }
 
   parse_notification({ resource }: T_tenpay_notification): O_tenpay_decipher {
-    return this.sdk.decipher_gcm(resource.ciphertext, resource.associated_data, resource.nonce, this.opt.secret);
+    return this.sdk.decipher_gcm(resource.ciphertext, resource.associated_data, resource.nonce, this.opt.key_v3);
   }
 
   async query({ unique }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
