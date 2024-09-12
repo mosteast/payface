@@ -34,6 +34,7 @@ export class Alipay extends Base implements Payface {
       alipay_cert_content_app,
       auth_type,
     } = opt;
+    _('constructor.I: %o', opt);
     switch (auth_type) {
       case N_alipay_auth_type.secret:
         require_all({ id, secret, alipay_public_key });
@@ -51,20 +52,22 @@ export class Alipay extends Base implements Payface {
           alipay_cert_content_public,
           alipay_cert_content_app,
         });
-
-        this.sdk = new AlipaySdk({
+        const opt_sdk = {
           appId: id,
           privateKey: secret,
           alipayRootCertContent: alipay_cert_content_root,
           alipayPublicCertContent: alipay_cert_content_public,
           appCertContent: alipay_cert_content_app,
-        });
+        };
+        _('constructor.opt_sdk: %o', opt_sdk);
+        this.sdk = new AlipaySdk(opt_sdk);
         break;
       default:
         throw new Invalid_argument_external(
           'Invalid {auth_type}, should be one of: ' + JSON.stringify(values(N_alipay_auth_type)),
         );
     }
+    // _('sdk.alipay: %o', this.sdk);
   }
 
   sign(action: string, params: any): string {

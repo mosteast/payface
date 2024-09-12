@@ -31,13 +31,15 @@ export class Tenpay extends Base implements Payface {
   constructor(opt: T_opt_tenpay) {
     super(opt);
     this.opt = opt;
-
-    this.sdk = new Wx({
+    _('constructor.I: %o', opt);
+    const opt_sdk = {
       appid: opt.id,
       mchid: opt.mch_id,
       publicKey: opt.tenpay_cert_content_public as any, // 公钥
       privateKey: opt.tenpay_cert_content_private as any, // 秘钥
-    });
+    };
+    // _('constructor.opt_sdk: %o', opt_sdk);
+    this.sdk = new Wx(opt_sdk);
   }
 
   async pay_qrcode({ unique, subject, fee, client_ip }: I_pay_qrcode_tenpay): Promise<T_url_payment> {
@@ -55,6 +57,8 @@ export class Tenpay extends Base implements Payface {
     };
 
     _('transactions_native, I: %o', params);
+    _('sdk: %o', this.sdk);
+
     const res = (await this.sdk.transactions_native(params)) as any;
     const r = res.data;
     // { status: 200, data: { code_url: 'weixin://wxpay/bizpayurl?pr=mESVwYIz1' } }
@@ -85,6 +89,8 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_h5, I: %o', params);
+    _('sdk: %o', this.sdk);
+
     const res = (await this.sdk.transactions_h5(params)) as any;
     const r = res.data;
     // {
@@ -114,6 +120,8 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_app, I: %o', params);
+    _('sdk: %o', this.sdk);
+
     const res = (await this.sdk.transactions_app(params)) as any;
     const r = res.data;
     //   {
@@ -131,6 +139,7 @@ export class Tenpay extends Base implements Payface {
       console.error(r);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
+
     return {
       mch_id: this.opt.mch_id,
       appid: this.opt.id,
@@ -162,6 +171,8 @@ export class Tenpay extends Base implements Payface {
       },
     };
     _('transactions_jsapi, I: %o', params);
+    _('sdk: %o', this.sdk);
+
     const res = (await this.sdk.transactions_jsapi(params)) as any;
     const r = res.data;
     //   {
@@ -435,7 +446,6 @@ export interface O_tenpay_pay_app extends O_pay {
   nonce_str: string;
   sign: string;
   prepay_id: string;
-  package: string;
   /**
    * Timestamp to sign
    */
@@ -445,6 +455,7 @@ export interface O_tenpay_pay_app extends O_pay {
 export interface O_tenpay_pay_jsapi extends O_tenpay_pay_app {
   sign_type: string;
   sign: string;
+  package: string;
 }
 
 /**
