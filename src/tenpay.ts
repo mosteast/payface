@@ -1,7 +1,7 @@
 import debug from 'debug';
 import { Optional } from 'utility-types';
 import Wx from 'wechatpay-node-v3';
-import { Iapp, Ih5, Ijsapi, Inative, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
+import { Iapp, Ih5, Ijsapi, Inative, Ipay, Irefunds2 } from 'wechatpay-node-v3/dist/lib/interface';
 import { Base } from './base';
 import { Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
@@ -32,11 +32,12 @@ export class Tenpay extends Base implements Payface {
     super(opt);
     this.opt = opt;
     _('constructor.I: %o', opt);
-    const opt_sdk = {
+    const opt_sdk: Ipay = {
       appid: opt.id,
       mchid: opt.mch_id,
       publicKey: opt.tenpay_cert_content_public as any, // 公钥
       privateKey: opt.tenpay_cert_content_private as any, // 秘钥
+      key: opt.key_v3,
     };
     // _('constructor.opt_sdk: %o', opt_sdk);
     this.sdk = new Wx(opt_sdk);
@@ -362,6 +363,7 @@ export interface T_opt_tenpay extends T_opt_payface {
   tenpay_cert_content_public: string | Buffer; // typically called "apiclient_cert.pem"
   tenpay_cert_content_private: string | Buffer; // typically called "apiclient_key.pem"
   secret?: string; // partnerKey 微信支付安全密钥
+  key_v3?: string; // APIv3密钥，参考：https://kf.qq.com/faq/180830E36vyQ180830AZFZvu.html
   opt_common?: any;
 }
 
