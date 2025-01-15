@@ -65,7 +65,7 @@ export class Tenpay extends Base implements Payface {
     // { status: 200, data: { code_url: 'weixin://wxpay/bizpayurl?pr=mESVwYIz1' } }
     _('transactions_native, O: %o', r);
     if (res.status !== 200) {
-      console.error(r);
+      console.error(res);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
     return { url: r?.code_url } as any;
@@ -99,7 +99,7 @@ export class Tenpay extends Base implements Payface {
     // }
     _('transactions_h5, O: %o', r);
     if (res.status !== 200) {
-      console.error(r);
+      console.error(res);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
     return { url: r.h5_url, raw: r };
@@ -135,7 +135,7 @@ export class Tenpay extends Base implements Payface {
     //   }
     _('transactions_app, O: %o', r);
     if (res.status !== 200) {
-      console.error(r);
+      console.error(res);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
 
@@ -184,7 +184,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_jsapi, O: %o', r);
 
     if (res.status !== 200) {
-      console.error(r);
+      console.error(res);
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
 
