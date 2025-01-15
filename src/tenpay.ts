@@ -61,7 +61,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_native, I: %o', params);
 
     const res = (await this.sdk.transactions_native(params)) as any;
-    const r = res.data;
+    const r = res.data || {};
     // { status: 200, data: { code_url: 'weixin://wxpay/bizpayurl?pr=mESVwYIz1' } }
     _('transactions_native, O: %o', r);
     if (res.status !== 200) {
@@ -92,7 +92,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_h5, I: %o', params);
 
     const res = (await this.sdk.transactions_h5(params)) as any;
-    const r = res.data;
+    const r = res.data || {};
     // {
     // status: 200,
     // h5_url: 'https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx051840206120147833cf4bcfcef12b0000&package=2056162962'
@@ -122,7 +122,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_app, I: %o', params);
 
     const res = (await this.sdk.transactions_app(params)) as any;
-    const r = res.data;
+    const r = res.data || {};
     //   {
     //     status: 200,
     //     appid: 'appid',
@@ -172,7 +172,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_jsapi, I: %o', params);
 
     const res = (await this.sdk.transactions_jsapi(params)) as any;
-    const r = res.data;
+    const r = res.data || {};
     //   {
     //     appId: 'appid',
     //     timeStamp: '1609918952',
