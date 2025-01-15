@@ -65,7 +65,7 @@ export class Tenpay extends Base implements Payface {
     // { status: 200, data: { code_url: 'weixin://wxpay/bizpayurl?pr=mESVwYIz1' } }
     _('transactions_native, O: %o', r);
     if (res.status !== 200) {
-      console.error(res);
+      console.error(JSON.stringify(res, null, 2));
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
     return { url: r?.code_url } as any;
@@ -99,7 +99,7 @@ export class Tenpay extends Base implements Payface {
     // }
     _('transactions_h5, O: %o', r);
     if (res.status !== 200) {
-      console.error(res);
+      console.error(JSON.stringify(res, null, 2));
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
     return { url: r.h5_url, raw: r };
@@ -135,7 +135,7 @@ export class Tenpay extends Base implements Payface {
     //   }
     _('transactions_app, O: %o', r);
     if (res.status !== 200) {
-      console.error(res);
+      console.error(JSON.stringify(res, null, 2));
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
 
@@ -184,7 +184,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_jsapi, O: %o', r);
 
     if (res.status !== 200) {
-      console.error(res);
+      console.error(JSON.stringify(res, null, 2));
       throw new Invalid_state_external(r.code + ': ' + r.message);
     }
 
@@ -327,20 +327,22 @@ export class Tenpay extends Base implements Payface {
   }
 
   async refund({ unique, fee, refund }: I_refund_tenpay): Promise<void> {
-    require_all({ unique, fee });
-    let r: any;
-    r = await this.sdk.refunds({
+    require_all({ unique, fee, refund });
+    let res: any;
+    res = await this.sdk.refunds({
       out_trade_no: unique,
       out_refund_no: `${unique}_refund`,
       amount: {
-        total: to_tenpay_fee(refund),
-        refund: to_tenpay_fee(fee),
+        total: to_tenpay_fee(fee as string),
+        refund: to_tenpay_fee(refund),
         currency: 'CNY',
       },
     } as Irefunds2);
 
-    if (!['PROCESSING', 'SUCCESS'].includes(r.status)) {
-      throw new Invalid_state_external(`[${r.status}], ${r.message}`);
+    _('transactions_native, O: %o', res);
+    if (res.status !== 200) {
+      console.error(JSON.stringify(res, null, 2));
+      throw new Invalid_state_external(res.code + ': ' + res.message);
     }
   }
 
@@ -650,9 +652,4 @@ export interface T_tenpay_refund {
   user_received_account: string;
 }
 
-export interface I_refund_tenpay extends I_refund {
-  /**
-   * Total fee
-   */
-  fee: string;
-}
+export interface I_refund_tenpay extends I_refund {}

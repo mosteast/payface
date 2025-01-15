@@ -93,6 +93,11 @@ export interface I_refund extends I_query {
    * Refund value (should ≤ than fee)
    */
   refund: string;
+
+  /**
+   * Original order total fee (Required for some payment platform like Tenpay/Wechat)
+   */
+  fee?: string;
 }
 
 export interface I_refund_query {
