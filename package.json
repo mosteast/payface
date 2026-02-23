@@ -1,6 +1,6 @@
 {
   "name": "payface",
-  "version": "0.6.30",
+  "version": "0.6.31",
   "description": "Payment interface for alipay and wechat",
   "homepage": "https://github.com/mosteast/payface#readme",
   "repository": "github:mosteast/payface",
@@ -13,8 +13,8 @@
   ],
   "scripts": {
     "build": "./bin/build",
-    "build_and_release": "npm run build && cd build && npm run release",
     "format": "npx sort-package-json && npx prettier --write .",
+    "go": "npm run build && cd build && npm run release",
     "release": "npm publish --access public",
     "test": "NODE_ENV=test vitest"
   },

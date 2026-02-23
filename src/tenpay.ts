@@ -25,6 +25,56 @@ import { random_unique } from './util';
 
 const _ = debug('payface:tenpay');
 
+interface I_tenpay_sdk_output<T> {
+  status?: number;
+  data?: T;
+  error?: string;
+  errRaw?: any;
+}
+
+function unwrap_tenpay_sdk_data<T>(res: I_tenpay_sdk_output<T> | T): T {
+  if (res && typeof res === 'object' && 'status' in (res as any)) {
+    return ((res as I_tenpay_sdk_output<T>).data || {}) as unknown as T;
+  }
+  return (res || {}) as unknown as T;
+}
+
+function parse_tenpay_sdk_error(res: any): string {
+  const from_data = [res?.data?.code, res?.data?.message].filter(Boolean).join(': ');
+  if (from_data) return from_data;
+
+  if (typeof res?.error === 'string') {
+    try {
+      const parsed = JSON.parse(res.error);
+      const from_error_json = [parsed?.code, parsed?.message].filter(Boolean).join(': ');
+      if (from_error_json) return from_error_json;
+      return res.error;
+    } catch {
+      return res.error;
+    }
+  }
+
+  return 'Unknown Wechat Pay SDK error';
+}
+
+function to_refund_no(unique: string): string {
+  return unique.endsWith('_refund') ? unique : `${unique}_refund`;
+}
+
+function get_header_value(headers: Record<string, string | string[] | undefined>, key: string): string | undefined {
+  for (const k in headers) {
+    if (k.toLowerCase() !== key.toLowerCase()) continue;
+    const v = headers[k];
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
+  }
+  return undefined;
+}
+
+function is_verify_notify_sign_input(data: any): data is I_tenpay_verify_notify_sign {
+  return !!data && typeof data === 'object' && 'headers' in data && 'body' in data;
+}
+
 export class Tenpay extends Base implements Payface {
   public sdk!: Wx;
   protected opt!: T_opt_tenpay;
@@ -66,7 +116,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_native, O: %o', r);
     if (res.status !== 200) {
       console.error(JSON.stringify(res, null, 2));
-      throw new Invalid_state_external(r.code + ': ' + r.message);
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
     return { url: r?.code_url } as any;
   }
@@ -100,7 +150,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_h5, O: %o', r);
     if (res.status !== 200) {
       console.error(JSON.stringify(res, null, 2));
-      throw new Invalid_state_external(r.code + ': ' + r.message);
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
     return { url: r.h5_url, raw: r };
   }
@@ -136,7 +186,7 @@ export class Tenpay extends Base implements Payface {
     _('transactions_app, O: %o', r);
     if (res.status !== 200) {
       console.error(JSON.stringify(res, null, 2));
-      throw new Invalid_state_external(r.code + ': ' + r.message);
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
 
     return {
@@ -185,7 +235,7 @@ export class Tenpay extends Base implements Payface {
 
     if (res.status !== 200) {
       console.error(JSON.stringify(res, null, 2));
-      throw new Invalid_state_external(r.code + ': ' + r.message);
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
 
     return {
@@ -263,16 +313,36 @@ export class Tenpay extends Base implements Payface {
   //   return r;
   // }
 
-  async verify_notify_sign(data: T_tenpay_notification): Promise<O_tenpay_decipher> {
-    let r: O_tenpay_decipher | undefined = undefined;
-    try {
-      // About this 'middleware_pay', @see:
-      // https://github.com/befinal/node-tenpay/blob/0729ebb018b620d64d2b5dde203843546c9f8beb/lib/index.js#L217
-      r = this.parse_notification(data);
-    } catch (e) {
-      console.error(e);
+  async verify_notify_sign(data: I_tenpay_verify_notify_sign | T_tenpay_notification): Promise<O_tenpay_decipher> {
+    if (!is_verify_notify_sign_input(data)) {
+      throw new Invalid_argument_external(
+        'Invalid notification input, require { headers, body } for signature verification',
+      );
     }
 
+    const body = typeof data.body === 'string' ? data.body : JSON.stringify(data.body);
+    const timestamp = get_header_value(data.headers, 'wechatpay-timestamp');
+    const nonce = get_header_value(data.headers, 'wechatpay-nonce');
+    const serial = get_header_value(data.headers, 'wechatpay-serial');
+    const signature = get_header_value(data.headers, 'wechatpay-signature');
+    const key_v3 = this.opt.key_v3;
+
+    require_all({ timestamp, nonce, serial, signature, key_v3 });
+
+    const verified = await this.sdk.verifySign({
+      timestamp: timestamp as string,
+      nonce: nonce as string,
+      serial: serial as string,
+      signature: signature as string,
+      body,
+      apiSecret: key_v3,
+    });
+    if (!verified) {
+      throw new Invalid_argument_external('Invalid notification signature');
+    }
+
+    const payload = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+    const r = this.parse_notification(payload);
     _('verify_notify_sign, parsed: %o', r);
 
     if (r?.trade_state !== 'SUCCESS') {
@@ -283,35 +353,47 @@ export class Tenpay extends Base implements Payface {
   }
 
   parse_notification({ resource }: T_tenpay_notification): O_tenpay_decipher {
-    return this.sdk.decipher_gcm(
-      resource.ciphertext,
-      resource.associated_data,
-      resource.nonce,
-      this.opt.key_v3 || this.opt.secret,
-    );
+    if (!this.opt.key_v3) {
+      throw new Invalid_argument_external('Missing "key_v3", required for callback decryption');
+    }
+
+    return this.sdk.decipher_gcm(resource.ciphertext, resource.associated_data, resource.nonce, this.opt.key_v3);
   }
 
-  async query({ unique }: I_query): Promise<T_receipt<T_order_tenpay> | undefined> {
-    const raw = (await this.sdk.query({
+  async query({ unique }: I_query): Promise<T_receipt<O_tenpay_query> | undefined> {
+    const res = (await this.sdk.query({
       out_trade_no: unique,
-    })) as O_tenpay_query;
+    })) as I_tenpay_sdk_output<O_tenpay_query>;
+    const raw = unwrap_tenpay_sdk_data<O_tenpay_query>(res);
 
     _('query, O: %o', raw);
 
-    let patch: Partial<T_receipt<T_order_tenpay>> = {};
-    const ok = raw.trade_state === 'SUCCESS';
-    if (ok) {
-      patch = {
-        unique: raw.out_trade_no,
-        fee: round_money(n(raw.amount.total).div(100)).toString(),
-        created_at: raw.success_time,
-      };
+    if (res.status && res.status !== 200) {
+      if (res.status === 404) {
+        return {
+          ok: false,
+          unique,
+          fee: '0',
+          raw,
+        } as T_receipt<O_tenpay_query>;
+      }
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
 
-    return { ok, raw, ...patch } as T_receipt<T_order_tenpay>;
+    const created_at = raw.success_time;
+    const total = raw?.amount?.total;
+    const fee = total === undefined ? '0' : round_money(n(total).div(100)).toString();
+    return {
+      ok: raw.trade_state === 'SUCCESS',
+      unique: raw.out_trade_no || unique,
+      fee,
+      created_at,
+      paid_at: created_at,
+      raw,
+    };
   }
 
-  async verify(opt: I_verify): Promise<T_receipt<T_order_tenpay>> {
+  async verify(opt: I_verify): Promise<T_receipt<O_tenpay_query>> {
     let r;
     try {
       r = await this.query(opt);
@@ -328,43 +410,65 @@ export class Tenpay extends Base implements Payface {
 
   async refund({ unique, fee, refund }: I_refund_tenpay): Promise<void> {
     require_all({ unique, fee, refund });
-    let res: any;
-    res = await this.sdk.refunds({
+    if (n(refund).greaterThan(n(fee as string))) {
+      throw new Invalid_argument_external(`Refund should <= fee, got fee: ${fee}, refund: ${refund}`);
+    }
+
+    const out_refund_no = to_refund_no(unique);
+    const res = (await this.sdk.refunds({
       out_trade_no: unique,
-      out_refund_no: `${unique}_refund`,
+      out_refund_no,
       amount: {
         total: to_tenpay_fee(fee as string),
         refund: to_tenpay_fee(refund),
         currency: 'CNY',
       },
-    } as Irefunds2);
+    } as Irefunds2)) as I_tenpay_sdk_output<T_tenpay_refund>;
 
-    _('transactions_native, O: %o', res);
+    _('refunds, O: %o', res);
     if (res.status !== 200) {
+      // Retry-safe handling: when create-refund fails, query refund status first by out_refund_no.
+      const refund_data = await this.query_refund_data(out_refund_no);
+      if (refund_data?.status === 'SUCCESS' || refund_data?.status === 'PROCESSING') return;
+
       console.error(JSON.stringify(res, null, 2));
-      throw new Invalid_state_external(res.code + ': ' + res.message);
+      throw new Invalid_state_external(parse_tenpay_sdk_error(res));
     }
   }
 
   async refund_query({ unique }: I_refund_query): Promise<T_refund<T_tenpay_refund>> {
     require_all({ unique });
-    const raw = (await this.sdk.find_refunds(unique)) as any;
+    const out_refund_no = to_refund_no(unique);
+    const raw = await this.query_refund_data(out_refund_no);
+    if (!raw) {
+      throw new Invalid_state_external(`Could not query refund by out_refund_no: "${out_refund_no}"`);
+    }
+
     return {
       raw,
-      refund: from_tenpay_fee(raw.amount.refund.toString()),
+      refund: from_tenpay_fee((raw?.amount?.refund || 0).toString()),
       ok: raw.status === 'SUCCESS',
       pending: raw.status === 'PROCESSING',
     };
   }
 
+  private async query_refund_data(out_refund_no: string): Promise<T_tenpay_refund | undefined> {
+    const res = (await this.sdk.find_refunds(out_refund_no)) as I_tenpay_sdk_output<T_tenpay_refund>;
+    if (res.status !== 200) return undefined;
+    return unwrap_tenpay_sdk_data<T_tenpay_refund>(res);
+  }
+
   protected validate_opt(opt: T_opt_tenpay) {
     super.validate_opt(opt);
-    const { mch_id, tenpay_cert_content_private, tenpay_cert_content_public } = opt;
+    const { mch_id, tenpay_cert_content_private, tenpay_cert_content_public, key_v3 } = opt;
     require_all({
       mch_id,
       tenpay_cert_content_private,
       tenpay_cert_content_public,
     });
+    if (!key_v3) {
+      _('validate_opt.W: missing key_v3, callback signature verification/decryption will not work');
+    }
   }
 }
 
@@ -393,6 +497,17 @@ export interface I_pay_app_tenpay extends I_pay_mobile_web_tenpay {}
 
 export interface I_pay_jsapi_tenpay extends I_pay_mobile_web_tenpay {
   openid: string;
+}
+
+export interface I_tenpay_verify_notify_sign {
+  /**
+   * Original request body (raw string is recommended for stable signature verification)
+   */
+  body: string | T_tenpay_notification;
+  /**
+   * Request headers (Node lower-case keys and canonical keys are both accepted)
+   */
+  headers: Record<string, string | string[] | undefined>;
 }
 
 export function to_tenpay_fee(fee: string) {
@@ -532,7 +647,6 @@ export interface O_tenpay_qrcode {
  }
  */
 export interface O_tenpay_query {
-  status: number;
   amount: {
     currency: string;
     payer_currency: string;
@@ -578,7 +692,8 @@ export interface T_tenpay_notification {
   summary: string;
   resource: {
     original_type: string;
-    aithm: string;
+    algorithm?: string;
+    aithm?: string;
     ciphertext: string;
     associated_data: string;
     nonce: string;
@@ -635,7 +750,7 @@ export interface T_tenpay_refund {
     payer_refund: number;
     payer_total: number;
     refund: number;
-    refund_fee: string;
+    refund_fee: number;
     settlement_refund: number;
     settlement_total: number;
     total: number;

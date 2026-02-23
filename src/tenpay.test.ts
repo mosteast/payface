@@ -10,123 +10,133 @@ const tenpay_cert_content_public = readFileSync(__dirname + '/test_asset/tenpay/
 const tenpay_cert_content_private = readFileSync(__dirname + '/test_asset/tenpay/apiclient_key.pem');
 const openid = process.env.tenpay_openid as string;
 
-if (!id || !mchid || !secret) {
+const has_tenpay_env = Boolean(id && mchid && secret);
+if (!has_tenpay_env) {
   console.warn(`Empty env: {tenpay_id:${id}} or {tenpay_mchid:${mchid}} or {tenpay_secret:${secret}}`);
 }
 
-let client: Tenpay;
-beforeEach(() => {
-  client = new Tenpay({
-    id,
-    secret,
-    mch_id: mchid,
-    notify_url: 'https://example.com',
-    tenpay_cert_content_public,
-    tenpay_cert_content_private,
-  });
-});
-
-it('pay_qrcode', async () => {
-  const r = await client.pay_qrcode({
-    fee: '0.1',
-    unique: 'test_' + nanoid(),
-    subject: 'Test order',
-    client_ip: '123.139.93.107',
-  });
-  expect(r.url).toBeTruthy();
-  console.info('Payment url:', r.url);
-});
-
-it('mobile_web', async () => {
-  const r = await client.pay_mobile_web({
-    fee: '0.1',
-    unique: 'test_' + nanoid(),
-    subject: 'Test order',
-    client_ip: '123.139.93.107',
-  });
-  expect(r).toBeTruthy();
-  expect(r.url).toBeTruthy();
-  console.info('Payment url:', r.url);
-});
-
-it('pay_app', async () => {
-  const r = await client.pay_app({
-    fee: '0.1',
-    unique: 'test_' + nanoid(),
-    subject: 'Test order',
-    client_ip: '123.139.93.107',
-  });
-  expect(r.prepay_id).toBeTruthy();
-  expect(r.timestamp_sign).toBeTruthy();
-  expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
-  console.info('prepay_id', r.prepay_id);
-});
-it('pay_jsapi', async () => {
-  const r = await client.pay_jsapi({
-    fee: '0.1',
-    unique: 'test_' + nanoid(),
-    subject: 'Test order',
-    client_ip: '123.139.93.107',
-    openid,
-  });
-  expect(r.prepay_id).toBeTruthy();
-  expect(r.timestamp_sign).toBeTruthy();
-  expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
-  console.info('prepay_id', r.prepay_id);
-});
-
-describe('order', () => {
-  const unique = process.env.tenpay_order_id;
-  if (!unique) {
-    console.warn('Require env: tenpay_order_id');
-    return;
-  }
-
-  it('query', async () => {
-    const r = await client.query({ unique });
-    expect(r?.ok).toBeTruthy();
-    expect(r?.unique).toBeTruthy();
-    expect(r?.created_at).toBeTruthy();
-    expect(r?.fee).toBeTruthy();
-  });
-
-  it('verify', async () => {
-    await expect(client.verify({ unique })).resolves.not.toThrow();
-    await expect(client.verify({ unique: 'invalid_order_90971234' })).rejects.toThrow(Verification_error);
-  });
-});
-
-describe('refund', () => {
-  it('common', async () => {
-    const refund_unique = process.env.tenpay_refund_unique as string;
-    const refund_fee = process.env.tenpay_refund_fee as any;
-    const refund_refund = process.env.tenpay_refund_fee as any;
-    if (!refund_unique || !refund_fee || !refund_refund) {
-      console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
-      return;
-    }
-    await client.refund({
-      unique: refund_unique,
-      fee: refund_fee,
-      refund: refund_refund,
+const describe_tenpay = has_tenpay_env ? describe : describe.skip;
+describe_tenpay('tenpay integration', () => {
+  let client: Tenpay;
+  beforeEach(() => {
+    client = new Tenpay({
+      id: id!,
+      secret: secret!,
+      mch_id: mchid!,
+      notify_url: 'https://example.com',
+      tenpay_cert_content_public,
+      tenpay_cert_content_private,
     });
   });
-});
 
-describe('refund_query', () => {
-  it('common', async () => {
-    const refund_unique = process.env.tenpay_refund_unique as string;
-    const refund_refund = process.env.tenpay_refund_fee as any;
-    if (!refund_unique || !refund_refund) {
-      console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
-      return;
-    }
+  it('pay_qrcode', async () => {
+    const r = await client.pay_qrcode({
+      fee: '0.1',
+      unique: 'test_' + nanoid(),
+      subject: 'Test order',
+      client_ip: '123.139.93.107',
+    });
+    expect(r.url).toBeTruthy();
+    console.info('Payment url:', r.url);
+  });
 
-    const r = await client.refund_query({ unique: refund_unique });
-    expect(r.ok).toBeTruthy();
-    expect(r.refund).toBe(refund_refund);
-    expect(r.pending).toBeFalsy();
-    expect(r.raw).toBeTruthy();
+  it('mobile_web', async () => {
+    const r = await client.pay_mobile_web({
+      fee: '0.1',
+      unique: 'test_' + nanoid(),
+      subject: 'Test order',
+      client_ip: '123.139.93.107',
+    });
+    expect(r).toBeTruthy();
+    expect(r.url).toBeTruthy();
+    console.info('Payment url:', r.url);
+  });
+
+  it('pay_app', async () => {
+    const r = await client.pay_app({
+      fee: '0.1',
+      unique: 'test_' + nanoid(),
+      subject: 'Test order',
+      client_ip: '123.139.93.107',
+    });
+    expect(r.prepay_id).toBeTruthy();
+    expect(r.timestamp_sign).toBeTruthy();
+    expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
+    console.info('prepay_id', r.prepay_id);
+  });
+
+  const has_openid = Boolean(openid);
+  if (!has_openid) {
+    console.warn('Require env: tenpay_openid');
+  }
+  const it_with_openid = has_openid ? it : it.skip;
+  it_with_openid('pay_jsapi', async () => {
+    const r = await client.pay_jsapi({
+      fee: '0.1',
+      unique: 'test_' + nanoid(),
+      subject: 'Test order',
+      client_ip: '123.139.93.107',
+      openid,
+    });
+    expect(r.prepay_id).toBeTruthy();
+    expect(r.timestamp_sign).toBeTruthy();
+    expect(parseInt(r.timestamp_sign as string)).toBeTruthy();
+    console.info('prepay_id', r.prepay_id);
+  });
+
+  const unique = process.env.tenpay_order_id;
+  const describe_order = unique ? describe : describe.skip;
+  if (!unique) {
+    console.warn('Require env: tenpay_order_id');
+  }
+
+  describe_order('order', () => {
+    it('query', async () => {
+      const r = await client.query({ unique: unique! });
+      expect(r?.ok).toBeTruthy();
+      expect(r?.unique).toBeTruthy();
+      expect(r?.created_at).toBeTruthy();
+      expect(r?.fee).toBeTruthy();
+    });
+
+    it('verify', async () => {
+      await expect(client.verify({ unique: unique! })).resolves.not.toThrow();
+      await expect(client.verify({ unique: 'invalid_order_90971234' })).rejects.toThrow(Verification_error);
+    });
+  });
+
+  describe('refund', () => {
+    it('common', async () => {
+      const refund_unique = process.env.tenpay_refund_unique as string;
+      const refund_fee = process.env.tenpay_refund_fee as any;
+      const refund_refund = process.env.tenpay_refund_fee as any;
+      if (!refund_unique || !refund_fee || !refund_refund) {
+        console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
+        return;
+      }
+      await client.refund({
+        unique: refund_unique,
+        fee: refund_fee,
+        refund: refund_refund,
+      });
+    });
+  });
+
+  describe('refund_query', () => {
+    it('common', async () => {
+      const refund_unique = process.env.tenpay_refund_unique as string;
+      const refund_refund = process.env.tenpay_refund_fee as any;
+      if (!refund_unique || !refund_refund) {
+        console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
+        return;
+      }
+
+      const r = await client.refund_query({ unique: refund_unique });
+      expect(r.ok).toBeTruthy();
+      expect(r.refund).toBe(refund_refund);
+      expect(r.pending).toBeFalsy();
+      expect(r.raw).toBeTruthy();
+    });
   });
 });
 
