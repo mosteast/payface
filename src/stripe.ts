@@ -7,18 +7,25 @@ import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
 import { n, round_money } from './lib/math';
 import {
+  I_close,
   I_pay,
   I_query,
   I_refund,
   I_refund_query,
+  I_transfer,
   I_verify,
+  NotifyAck,
+  NotifyEnvelope,
   Payface,
+  PaymentStatus,
+  PayfaceCapability,
+  RefundStatus,
   T_opt_payface,
   T_receipt,
   T_refund,
 } from './payface';
 import { T_url_payment } from './type';
-import { random_unique } from './util';
+import { get_header_value, random_unique } from './util';
 
 const _ = debug('payface:stripe');
 
@@ -44,16 +51,6 @@ const ZERO_DECIMAL_CURRENCIES = new Set([
 const THREE_DECIMAL_CURRENCIES = new Set(['bhd', 'iqd', 'jod', 'kwd', 'lyd', 'omr', 'tnd']);
 const SUBSCRIPTION_OK_STATUS = new Set(['active', 'trialing']);
 
-function get_header_value(headers: Record<string, string | string[] | undefined>, key: string): string | undefined {
-  for (const k in headers) {
-    if (k.toLowerCase() !== key.toLowerCase()) continue;
-    const v = headers[k];
-    if (typeof v === 'string') return v;
-    if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
-  }
-  return undefined;
-}
-
 function to_currency_decimals(currency?: string): number {
   const c = (currency || 'usd').toLowerCase();
   if (ZERO_DECIMAL_CURRENCIES.has(c)) return 0;
@@ -61,7 +58,7 @@ function to_currency_decimals(currency?: string): number {
   return 2;
 }
 
-function to_minor_amount(amount: string, currency?: string): number {
+function to_minor_amount(amount: string | number, currency?: string): number {
   const decimals = to_currency_decimals(currency);
   return n(amount).times(n(10).pow(decimals)).toDecimalPlaces(0).toNumber();
 }
@@ -105,6 +102,22 @@ function escape_search_query_value(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+function to_stripe_refund_status(status?: string | null): RefundStatus {
+  switch (status) {
+    case 'pending':
+    case 'requires_action':
+      return 'pending';
+    case 'succeeded':
+      return 'succeeded';
+    case 'canceled':
+      return 'canceled';
+    case 'failed':
+      return 'failed';
+    default:
+      return 'unknown';
+  }
+}
+
 export class Stripe extends Base implements Payface {
   public sdk!: Stripe_sdk;
   protected opt!: T_opt_stripe;
@@ -120,6 +133,7 @@ export class Stripe extends Base implements Payface {
   }
 
   protected validate_opt(opt: T_opt_stripe) {
+    super.validate_opt(opt);
     require_all({ secret: opt.secret });
   }
 
@@ -232,6 +246,19 @@ export class Stripe extends Base implements Payface {
     return event;
   }
 
+  async parse_notify(data: I_stripe_verify_notify_sign): Promise<NotifyEnvelope> {
+    const event = await this.verify_notify_sign(data);
+    return this.to_notify_envelope(event);
+  }
+
+  build_notify_ack(): NotifyAck {
+    return {
+      statusCode: 200,
+      body: '',
+      headers: {},
+    };
+  }
+
   async query({ unique }: I_query): Promise<T_receipt<Stripe_sdk.Checkout.Session> | undefined> {
     const raw = await this.find_session_by_unique(unique);
     if (!raw) {
@@ -240,15 +267,20 @@ export class Stripe extends Base implements Payface {
 
     const currency = this.get_session_currency(raw);
     const fee = from_minor_amount(this.get_session_total(raw), currency);
-    const ok = this.is_session_paid(raw);
+    const status = this.get_session_status(raw);
+    const ok = status === 'paid';
     const created_at = to_iso_date(raw.created);
     const paid_at = ok ? this.get_paid_at(raw, created_at) : undefined;
     return {
       ok,
+      status,
+      raw_status: this.get_session_raw_status(raw),
+      channel: 'stripe',
       unique: raw.client_reference_id || unique,
       fee,
       created_at,
       paid_at,
+      currency,
       raw,
     };
   }
@@ -261,7 +293,7 @@ export class Stripe extends Base implements Payface {
     return r;
   }
 
-  async refund({ unique, refund }: I_refund): Promise<void> {
+  async refund({ unique, refund, refund_unique }: I_refund): Promise<void> {
     require_all({ unique, refund });
     const session = await this.find_session_by_unique(unique);
     if (!session) {
@@ -280,10 +312,11 @@ export class Stripe extends Base implements Payface {
         amount,
         metadata: normalize_metadata({
           unique,
+          refund_unique,
         }),
       },
       {
-        idempotencyKey: `${unique}_refund_${amount}`,
+        idempotencyKey: refund_unique || `${unique}_refund_${amount}`,
       },
     );
     if (raw.status === 'failed' || raw.status === 'canceled') {
@@ -291,7 +324,7 @@ export class Stripe extends Base implements Payface {
     }
   }
 
-  async refund_query({ unique }: I_refund_query): Promise<T_refund<Stripe_sdk.Refund>> {
+  async refund_query({ unique, refund_unique }: I_refund_query): Promise<T_refund<Stripe_sdk.Refund>> {
     require_all({ unique });
     const session = await this.find_session_by_unique(unique);
     if (!session) {
@@ -304,18 +337,23 @@ export class Stripe extends Base implements Payface {
 
     const list = await this.sdk.refunds.list({
       payment_intent,
-      limit: 1,
+      limit: refund_unique ? 100 : 10,
     });
-    const raw = list.data?.[0];
+    const raw =
+      list.data?.find((x) => x.id === refund_unique || x.metadata?.refund_unique === refund_unique) || list.data?.[0];
     if (!raw) {
       throw new Invalid_state_external(`Could not query refund by unique: "${unique}"`);
     }
+    const status = to_stripe_refund_status(raw.status);
 
     return {
       raw,
       refund: from_minor_amount(raw.amount, raw.currency),
-      ok: raw.status === 'succeeded',
-      pending: raw.status === 'pending' || raw.status === 'requires_action',
+      ok: status === 'succeeded',
+      pending: status === 'pending',
+      status,
+      raw_status: raw.status || undefined,
+      channel: 'stripe',
     };
   }
 
@@ -430,17 +468,7 @@ export class Stripe extends Base implements Payface {
   }
 
   private is_session_paid(session: Stripe_sdk.Checkout.Session): boolean {
-    if (session.mode === 'payment') {
-      return session.payment_status === 'paid';
-    }
-    if (session.mode === 'subscription') {
-      const subscription = to_expanded_object<Stripe_sdk.Subscription>(session.subscription);
-      if (subscription?.status) {
-        return SUBSCRIPTION_OK_STATUS.has(subscription.status);
-      }
-      return session.payment_status === 'paid' || session.payment_status === 'no_payment_required';
-    }
-    return false;
+    return this.get_session_status(session) === 'paid';
   }
 
   private get_paid_at(session: Stripe_sdk.Checkout.Session, fallback?: string): string | undefined {
@@ -451,6 +479,160 @@ export class Stripe extends Base implements Payface {
     const invoice = to_expanded_object<Stripe_sdk.Invoice>(session.invoice);
     const paid_at = (invoice as any)?.status_transitions?.paid_at as number | undefined;
     return to_iso_date(paid_at) || fallback;
+  }
+
+  private get_session_status(session: Stripe_sdk.Checkout.Session): PaymentStatus {
+    if ((session as any).status === 'expired') {
+      return 'closed';
+    }
+
+    if (session.mode === 'payment') {
+      if (session.payment_status === 'paid') return 'paid';
+      return 'pending';
+    }
+
+    if (session.mode === 'subscription') {
+      const subscription = to_expanded_object<Stripe_sdk.Subscription>(session.subscription);
+      if (subscription?.status) {
+        if (SUBSCRIPTION_OK_STATUS.has(subscription.status)) return 'paid';
+        if (subscription.status === 'canceled' || subscription.status === 'unpaid') return 'failed';
+        if (subscription.status === 'incomplete_expired') return 'closed';
+        return 'pending';
+      }
+      if (session.payment_status === 'paid' || session.payment_status === 'no_payment_required') return 'paid';
+      return 'pending';
+    }
+
+    return 'unknown';
+  }
+
+  private get_session_raw_status(session: Stripe_sdk.Checkout.Session): string {
+    const subscription = to_expanded_object<Stripe_sdk.Subscription>(session.subscription);
+    return subscription?.status || session.payment_status || session.status || 'unknown';
+  }
+
+  private to_notify_envelope(event: Stripe_sdk.Event): NotifyEnvelope {
+    const occurred_at = to_iso_date(event.created);
+    if (event.type.startsWith('checkout.session.')) {
+      const session = event.data.object as Stripe_sdk.Checkout.Session;
+      const kind = session.mode === 'subscription' ? 'subscription' : 'payment';
+      const unique = session.client_reference_id || session.metadata?.unique || session.id;
+      return {
+        provider: 'stripe',
+        kind,
+        unique,
+        status: this.get_session_status(session),
+        raw_status: this.get_session_raw_status(session),
+        fee: from_minor_amount(session.amount_total || 0, session.currency || this.opt.currency),
+        currency: session.currency?.toLowerCase() || this.opt.currency?.toLowerCase(),
+        event_id: event.id,
+        occurred_at,
+        raw: event,
+      };
+    }
+
+    if (event.type.startsWith('refund.')) {
+      const refund = event.data.object as Stripe_sdk.Refund;
+      const status = to_stripe_refund_status(refund.status);
+      return {
+        provider: 'stripe',
+        kind: 'refund',
+        unique: refund.metadata?.unique,
+        refund_unique: refund.metadata?.refund_unique || refund.id,
+        status,
+        raw_status: refund.status || undefined,
+        refund: from_minor_amount(refund.amount, refund.currency),
+        currency: refund.currency?.toLowerCase(),
+        event_id: event.id,
+        occurred_at,
+        raw: event,
+      };
+    }
+
+    return {
+      provider: 'stripe',
+      kind: 'unknown',
+      status: 'unknown',
+      event_id: event.id,
+      occurred_at,
+      raw: event,
+    };
+  }
+
+  async close({ unique }: I_close): Promise<void> {
+    const session_id = unique.startsWith('cs_') ? unique : (await this.find_session_by_unique(unique))?.id;
+    if (!session_id) {
+      throw new Invalid_state_external(`Could not find checkout session by unique: "${unique}"`);
+    }
+    await this.sdk.checkout.sessions.expire(session_id);
+  }
+
+  supports(capability: PayfaceCapability): boolean {
+    return new Set<PayfaceCapability>(['pay_mobile_web', 'close', 'parse_notify', 'transfer']).has(capability);
+  }
+
+  async create_payout({
+    fee,
+    currency,
+    unique,
+    subject,
+    destination,
+    metadata,
+  }: I_create_payout_stripe): Promise<O_stripe_payout> {
+    require_all({ fee });
+    const resolved_currency = (currency || this.opt.currency || 'usd').toLowerCase();
+    const idempotencyKey = unique || random_unique();
+    const raw = await this.sdk.payouts.create(
+      {
+        amount: to_minor_amount(fee as string, resolved_currency),
+        currency: resolved_currency,
+        destination,
+        description: subject,
+        metadata: normalize_metadata(metadata || {}),
+      },
+      {
+        idempotencyKey,
+      },
+    );
+    return { raw };
+  }
+
+  async get_payout(id: string): Promise<Stripe_sdk.Payout> {
+    return this.sdk.payouts.retrieve(id);
+  }
+
+  async cancel_payout(id: string): Promise<Stripe_sdk.Payout> {
+    return this.sdk.payouts.cancel(id);
+  }
+
+  async create_transfer({
+    fee,
+    tid,
+    unique,
+    subject,
+    currency,
+    metadata,
+  }: I_create_transfer_stripe): Promise<O_stripe_transfer> {
+    require_all({ fee, tid });
+    const resolved_currency = (currency || this.opt.currency || 'usd').toLowerCase();
+    const idempotencyKey = unique || random_unique();
+    const raw = await this.sdk.transfers.create(
+      {
+        amount: to_minor_amount(fee, resolved_currency),
+        currency: resolved_currency,
+        destination: tid,
+        description: subject,
+        metadata: normalize_metadata(metadata || {}),
+      },
+      {
+        idempotencyKey,
+      },
+    );
+    return { raw };
+  }
+
+  async get_transfer(id: string): Promise<Stripe_sdk.Transfer> {
+    return this.sdk.transfers.retrieve(id);
   }
 }
 
@@ -511,4 +693,23 @@ export interface I_stripe_verify_notify_sign {
   signature?: string | Buffer | Array<string>;
   webhook_secret?: string;
   trusted_event_types?: string[];
+}
+
+export interface I_create_payout_stripe extends Partial<I_pay> {
+  currency?: string;
+  destination?: string;
+  metadata?: Record<string, string | number | undefined>;
+}
+
+export interface I_create_transfer_stripe extends I_transfer {
+  currency?: string;
+  metadata?: Record<string, string | number | undefined>;
+}
+
+export interface O_stripe_payout {
+  raw: Stripe_sdk.Payout;
+}
+
+export interface O_stripe_transfer {
+  raw: Stripe_sdk.Transfer;
 }

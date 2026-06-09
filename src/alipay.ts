@@ -12,11 +12,57 @@ import { Invalid_state_external } from './error/invalid_state';
 import { require_all } from './error/util/lack_argument';
 import { Verification_error } from './error/verification_error';
 import { n, round_cny } from './lib/math';
-import { I_query, I_refund, I_transfer, I_verify, Payface, T_opt_payface, T_receipt, T_refund } from './payface';
+import {
+  I_close,
+  I_query,
+  I_refund,
+  I_refund_query,
+  I_transfer,
+  I_verify,
+  NotifyAck,
+  NotifyEnvelope,
+  Payface,
+  PaymentStatus,
+  PayfaceCapability,
+  RefundStatus,
+  T_opt_payface,
+  T_receipt,
+  T_refund,
+} from './payface';
 import { T_url_payment } from './type';
 import { random_unique } from './util';
 
-const _ = debug('payface:tenpay');
+const _ = debug('payface:alipay');
+
+function to_alipay_payment_status(trade_status?: string): PaymentStatus {
+  switch (trade_status) {
+    case 'WAIT_BUYER_PAY':
+      return 'pending';
+    case 'TRADE_SUCCESS':
+    case 'TRADE_FINISHED':
+      return 'paid';
+    case 'TRADE_CLOSED':
+      return 'closed';
+    default:
+      return 'unknown';
+  }
+}
+
+function to_alipay_refund_status(refund_status?: string): RefundStatus {
+  switch (refund_status) {
+    case 'REFUND_SUCCESS':
+    case 'REFUND_FINISHED':
+      return 'succeeded';
+    case 'REFUND_PROCESSING':
+      return 'pending';
+    case 'REFUND_CLOSED':
+      return 'canceled';
+    case 'REFUND_FAIL':
+      return 'failed';
+    default:
+      return 'unknown';
+  }
+}
 
 export class Alipay extends Base implements Payface {
   public sdk!: AlipaySdk;
@@ -122,9 +168,10 @@ export class Alipay extends Base implements Payface {
   }
 
   build_params({ unique, fee, subject, return_url, content, product_code }: I_pay_alipay) {
+    const resolved_return_url = return_url || this.opt.return_url;
     return {
       notify_url: this.opt.notify_url,
-      return_url: return_url || 'https://alipay.com',
+      ...(resolved_return_url ? { return_url: resolved_return_url } : {}),
       bizContent: {
         total_amount: round_cny(fee),
         out_trade_no: unique || random_unique(),
@@ -184,23 +231,63 @@ export class Alipay extends Base implements Payface {
     return true;
   }
 
+  async parse_notify(data: any): Promise<NotifyEnvelope> {
+    await this.verify_notify_sign(data);
+    const status = to_alipay_payment_status(data.trade_status);
+    return {
+      provider: 'alipay',
+      kind: 'payment',
+      unique: data.out_trade_no,
+      status,
+      raw_status: data.trade_status,
+      fee: data.total_amount ? round_cny(data.total_amount) : undefined,
+      currency: 'cny',
+      occurred_at: data.notify_time
+        ? parse(data.notify_time, 'yyyy-MM-dd HH:mm:ss', new Date()).toISOString()
+        : undefined,
+      raw: data,
+    };
+  }
+
+  build_notify_ack(): NotifyAck {
+    return {
+      statusCode: 200,
+      body: 'success',
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+      },
+    };
+  }
+
   async query({ unique }: I_query): Promise<T_receipt<T_order_alipay> | undefined> {
     const raw = (await this.sdk.exec('alipay.trade.query', {
       bizContent: { out_trade_no: unique },
     })) as T_order_alipay;
 
     if (!raw?.code) {
+      throw new Invalid_state_external('Empty Alipay query response');
+    }
+
+    if (raw.code === '40004' && raw.subCode === 'ACQ.TRADE_NOT_EXIST') {
       return;
     }
 
-    let patch: Partial<T_receipt<T_order_alipay>> = {};
-    const ok = raw.code === '10000';
-    if (ok) {
-      patch = {
-        unique: raw.outTradeNo,
-        fee: round_cny(n(raw.totalAmount)).toString(),
-        created_at: parse(raw.sendPayDate, 'yyyy-MM-dd HH:mm:ss', new Date()).toISOString(),
-      };
+    if (raw.code !== '10000') {
+      throw new Invalid_state_external(`[${raw.code}] ${raw.subCode || raw.msg}`);
+    }
+
+    const ok = raw.tradeStatus === 'TRADE_SUCCESS' || raw.tradeStatus === 'TRADE_FINISHED';
+    const status = to_alipay_payment_status(raw.tradeStatus);
+    const patch: Partial<T_receipt<T_order_alipay>> = {
+      channel: 'alipay',
+      currency: 'cny',
+      status,
+      raw_status: raw.tradeStatus,
+      unique: raw.outTradeNo || unique,
+      fee: round_cny(n(raw.totalAmount)).toString(),
+    };
+    if (raw.sendPayDate) {
+      patch.created_at = parse(raw.sendPayDate, 'yyyy-MM-dd HH:mm:ss', new Date()).toISOString();
     }
 
     return {
@@ -219,9 +306,13 @@ export class Alipay extends Base implements Payface {
     return r;
   }
 
-  async _refund({ unique, refund }: I_refund): Promise<T_raw_refund> {
+  async _refund({ unique, refund, refund_unique }: I_refund): Promise<T_raw_refund> {
     return this.sdk.exec('alipay.trade.refund', {
-      bizContent: { out_trade_no: unique, refund_amount: refund },
+      bizContent: {
+        out_trade_no: unique,
+        refund_amount: refund,
+        out_request_no: refund_unique || unique,
+      },
     });
   }
 
@@ -232,17 +323,67 @@ export class Alipay extends Base implements Payface {
     }
   }
 
-  async refund_query(opt: I_refund): Promise<T_refund<any>> {
-    const raw = await this._refund(opt);
+  async refund_query({ unique, refund_unique }: I_refund_query): Promise<T_refund<any>> {
+    const raw = await this.sdk.exec('alipay.trade.fastpay.refund.query', {
+      bizContent: {
+        out_trade_no: unique,
+        out_request_no: refund_unique || unique,
+      },
+    });
+
+    if (raw.code !== '10000') {
+      throw new Invalid_state_external(`[${raw.code}], ${raw.msg}`);
+    }
+
+    const status = to_alipay_refund_status(raw.refundStatus);
+    return {
+      raw,
+      ok: status === 'succeeded' || (status === 'unknown' && raw.code === '10000'),
+      pending: status === 'pending',
+      status: status === 'unknown' && raw.code === '10000' ? 'succeeded' : status,
+      raw_status: raw.refundStatus,
+      channel: 'alipay',
+      refund: round_cny(raw.refundAmount || raw.refundFee || 0),
+    };
+  }
+
+  async close({ unique }: I_close): Promise<void> {
+    const raw = await this.sdk.exec('alipay.trade.close', {
+      bizContent: { out_trade_no: unique },
+    });
+
+    if (raw.code !== '10000') {
+      throw new Invalid_state_external(`[${raw.code}], ${raw.msg}`);
+    }
+  }
+
+  supports(capability: PayfaceCapability): boolean {
+    return new Set<PayfaceCapability>([
+      'pay_qrcode',
+      'pay_mobile_web',
+      'pay_app',
+      'transfer',
+      'balance',
+      'close',
+      'parse_notify',
+    ]).has(capability);
+  }
+
+  async download_bill({ bill_type, bill_date }: I_download_bill_alipay): Promise<O_download_bill> {
+    const raw = await this.sdk.exec('alipay.data.dataservice.bill.downloadurl.query', {
+      bizContent: {
+        bill_type,
+        bill_date,
+      },
+    });
 
     if (raw.code !== '10000') {
       throw new Invalid_state_external(`[${raw.code}], ${raw.msg}`);
     }
 
     return {
+      url: raw.billDownloadUrl,
       raw,
-      ok: raw.code === '10000',
-      refund: round_cny(raw.refundFee),
     };
   }
 }
@@ -256,6 +397,7 @@ export interface T_opt_alipay extends T_opt_payface {
   id: string; // appid 应用id
   secret: string; // app private key 应用私钥
   auth_type: N_alipay_auth_type;
+  return_url?: string;
   alipay_public_key?: string; // alipay public key 支付宝公钥
   alipay_cert_content_root?: string | Buffer; // alipay root cert content 支付宝根证书内容
   alipay_cert_content_public?: string | Buffer; // alipay public cert content 支付宝公钥证书内容
@@ -287,6 +429,16 @@ export interface O_get_balance {
   frozen?: string;
 }
 
+export interface I_download_bill_alipay {
+  bill_type: string;
+  bill_date: string;
+}
+
+export interface O_download_bill {
+  url: string;
+  raw: any;
+}
+
 /**
  * Example:
  * {
@@ -308,6 +460,8 @@ export interface O_get_balance {
 export interface T_order_alipay {
   code: string;
   msg: string;
+  subCode?: string;
+  subMsg?: string;
   buyerLogonId: string;
   buyerPayAmount: string;
   buyerUserId: string;

@@ -23,7 +23,7 @@ export function round_int(x: I_bignumber): number {
 }
 
 export function n_money(x: I_bignumber, dp?: number): Decimal {
-  dp = dp ?? 15;
+  dp = dp ?? 2;
   return n_dp(x, dp);
 }
 

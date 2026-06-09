@@ -1,7 +1,7 @@
 {
   "name": "payface",
-  "version": "0.6.40",
-  "description": "Payment interface for alipay and wechat",
+  "version": "0.8.0",
+  "description": "TypeScript payment SDK for Alipay, Wechat Pay v3, and Stripe",
   "homepage": "https://github.com/mosteast/payface#readme",
   "repository": "github:mosteast/payface",
   "license": "ISC",
@@ -13,10 +13,14 @@
   ],
   "scripts": {
     "build": "./bin/build",
+    "coverage": "NODE_ENV=test vitest run --coverage",
     "format": "npx sort-package-json && npx prettier --write .",
-    "go": "npm run build && cd build && npm run release",
-    "release": "npm publish --access public",
-    "test": "NODE_ENV=test vitest"
+    "go": "npm run release",
+    "pack:check": "npm run build && cd build && rm -f ./*.tgz && npm pack --json > /dev/null && rm -f ./*.tgz",
+    "release": "npm run build && cd build && npm publish --access public",
+    "test": "NODE_ENV=test vitest",
+    "test:run": "NODE_ENV=test vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mosteast/common_eid": "^0.2.0",
@@ -35,7 +39,7 @@
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.11.17",
     "@types/shelljs": "^0.8.15",
-    "@vitest/coverage-c8": "^0.29.7",
+    "@vitest/coverage-v8": "1.2.2",
     "dotenv": "^16.4.4",
     "fs-extra": "^11.2.0",
     "lodash": "^4.17.21",

@@ -2,7 +2,7 @@
 
 const { dir_root } = require('../root')
 const { writeFileSync, pathExistsSync, ensureDirSync, copySync } = require('fs-extra')
-const { mv, cp, exec, mkdir } = require('shelljs')
+const { mv, exec, mkdir } = require('shelljs')
 
 const r = dir_root
 
@@ -14,10 +14,6 @@ async function run() {
   compile()
   copy_requirements()
   edit_config()
-
-  console.info(`
-  Remember to put .env file in your build directory in production environment.
-`)
 }
 
 function prepare_environment() {
@@ -32,15 +28,33 @@ function compile() {
 
 function copy_requirements() {
   copySync(r('readme.md'), b('readme.md'))
-  copySync(r('bin'), b('bin'))
+  if (pathExistsSync(r('CHANGELOG.md'))) {
+    copySync(r('CHANGELOG.md'), b('CHANGELOG.md'))
+  }
 }
 
 function edit_config() {
-  const json = require(r('./package.json'))
-  delete json.files
-  json.main = 'index.js'
-  json.type = 'index.d.ts'
-  writeFileSync(dir_root('build/package.json'), JSON.stringify(json), () => {})
+  const src = require(r('./package.json'))
+  const json = {
+    name: src.name,
+    version: src.version,
+    description: src.description,
+    homepage: src.homepage,
+    repository: src.repository,
+    license: src.license,
+    author: src.author,
+    main: 'index.js',
+    types: 'index.d.ts',
+    files: ['index.js', 'index.d.ts', 'src/', 'readme.md', 'CHANGELOG.md'],
+    exports: {
+      '.': {
+        require: './index.js',
+        types: './index.d.ts',
+      },
+    },
+    dependencies: src.dependencies,
+  }
+  writeFileSync(dir_root('build/package.json'), JSON.stringify(json, null, 2) + '\n')
 }
 
 function backup_git() {
