@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { Invalid_argument_external } from './error/invalid_argument';
+import { Invalid_argument, Invalid_argument_external } from './error/invalid_argument';
 import { Invalid_state_external } from './error/invalid_state';
 import { Tenpay } from './tenpay';
 
@@ -19,6 +19,160 @@ function create_client() {
 }
 
 describe('tenpay wrapper unit', () => {
+  it('pay_qrcode should call transactions_native and return code_url', async () => {
+    const client = create_client();
+    const transactions_native = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        code_url: 'weixin://wxpay/bizpayurl?pr=test',
+      },
+    });
+    (client as any).sdk = { transactions_native };
+
+    const r = await client.pay_qrcode({
+      unique: 'order_pay_qrcode_1',
+      subject: 'QR order',
+      fee: '10',
+      client_ip: '127.0.0.1',
+    });
+
+    expect(transactions_native).toHaveBeenCalledWith(
+      expect.objectContaining({
+        out_trade_no: 'order_pay_qrcode_1',
+        description: 'QR order',
+        notify_url: 'https://example.com/notify',
+        amount: { total: 1000 },
+        scene_info: {
+          payer_client_ip: '127.0.0.1',
+        },
+      }),
+    );
+    expect(r.url).toBe('weixin://wxpay/bizpayurl?pr=test');
+  });
+
+  it('pay_qrcode should throw on non-200 responses', async () => {
+    const client = create_client();
+    const transactions_native = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { transactions_native };
+
+    await expect(
+      client.pay_qrcode({
+        unique: 'order_pay_qrcode_2',
+        subject: 'QR order',
+        fee: '10',
+        client_ip: '127.0.0.1',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
+  it('pay_app should map sdk app response fields', async () => {
+    const client = create_client();
+    const transactions_app = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        noncestr: 'nonce_app',
+        sign: 'sign_app',
+        prepayid: 'prepay_app',
+        timestamp: '1730000000',
+      },
+    });
+    (client as any).sdk = { transactions_app };
+
+    const r = await client.pay_app({
+      unique: 'order_pay_app_1',
+      subject: 'App order',
+      fee: '10',
+      client_ip: '127.0.0.1',
+    });
+
+    expect(transactions_app).toHaveBeenCalledWith(
+      expect.objectContaining({
+        out_trade_no: 'order_pay_app_1',
+        description: 'App order',
+        amount: { total: 1000 },
+      }),
+    );
+    expect(r.prepay_id).toBe('prepay_app');
+    expect(r.timestamp_sign).toBe('1730000000');
+    expect(r.nonce_str).toBe('nonce_app');
+  });
+
+  it('pay_app should throw on non-200 responses', async () => {
+    const client = create_client();
+    const transactions_app = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { transactions_app };
+
+    await expect(
+      client.pay_app({
+        unique: 'order_pay_app_2',
+        subject: 'App order',
+        fee: '10',
+        client_ip: '127.0.0.1',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
+  it('pay_jsapi should map sdk jsapi response fields', async () => {
+    const client = create_client();
+    const transactions_jsapi = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        nonceStr: 'nonce_jsapi',
+        paySign: 'sign_jsapi',
+        package: 'prepay_id=prepay_jsapi',
+        signType: 'RSA',
+        timeStamp: '1730000001',
+      },
+    });
+    (client as any).sdk = { transactions_jsapi };
+
+    const r = await client.pay_jsapi({
+      unique: 'order_pay_jsapi_1',
+      subject: 'JSAPI order',
+      fee: '10',
+      client_ip: '127.0.0.1',
+      openid: 'openid_jsapi',
+    });
+
+    expect(transactions_jsapi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        out_trade_no: 'order_pay_jsapi_1',
+        description: 'JSAPI order',
+        payer: {
+          openid: 'openid_jsapi',
+        },
+      }),
+    );
+    expect(r.prepay_id).toBe('prepay_jsapi');
+    expect(r.package).toBe('prepay_id=prepay_jsapi');
+    expect(r.timestamp_sign).toBe('1730000001');
+  });
+
+  it('pay_jsapi should throw on non-200 responses', async () => {
+    const client = create_client();
+    const transactions_jsapi = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { transactions_jsapi };
+
+    await expect(
+      client.pay_jsapi({
+        unique: 'order_pay_jsapi_2',
+        subject: 'JSAPI order',
+        fee: '10',
+        client_ip: '127.0.0.1',
+        openid: 'openid_jsapi',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
   it('query should unwrap sdk response {status, data}', async () => {
     const client = create_client();
     const query = vi.fn().mockResolvedValue({
@@ -57,6 +211,23 @@ describe('tenpay wrapper unit', () => {
     const r = await client.query({ unique: 'order_100b' });
     expect(r?.ok).toBe(false);
     expect(r?.status).toBe('pending');
+  });
+
+  it('query should map PAYERROR to failed status', async () => {
+    const client = create_client();
+    const query = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        trade_state: 'PAYERROR',
+        out_trade_no: 'order_100c',
+        amount: { total: 123 },
+      },
+    });
+    (client as any).sdk = { query };
+
+    const r = await client.query({ unique: 'order_100c' });
+    expect(r?.ok).toBe(false);
+    expect(r?.status).toBe('failed');
   });
 
   it('query should return undefined for 404 not found', async () => {
@@ -170,6 +341,27 @@ describe('tenpay wrapper unit', () => {
     expect(find_refunds).toHaveBeenCalledWith('order_300_refund');
   });
 
+  it('refund should throw when create-refund fails and follow-up query has no recoverable status', async () => {
+    const client = create_client();
+    const refunds = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    const find_refunds = vi.fn().mockResolvedValue({
+      status: 404,
+      data: {},
+    });
+    (client as any).sdk = { refunds, find_refunds };
+
+    await expect(
+      client.refund({
+        unique: 'order_302',
+        fee: '1',
+        refund: '1',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
   it('refund should reject when refund amount is greater than total fee', async () => {
     const client = create_client();
     (client as any).sdk = {
@@ -233,6 +425,76 @@ describe('tenpay wrapper unit', () => {
     expect(r.trade_state).toBe('SUCCESS');
   });
 
+  it('verify_notify_sign should reject missing signature headers', async () => {
+    const client = create_client();
+    (client as any).sdk = {
+      verifySign: vi.fn(),
+      decipher_gcm: vi.fn(),
+    };
+
+    await expect(
+      client.verify_notify_sign({
+        body: {
+          resource: {
+            ciphertext: 'cipher',
+            associated_data: 'transaction',
+            nonce: 'nonce123',
+          },
+        } as any,
+        headers: {},
+      }),
+    ).rejects.toThrow(Invalid_argument);
+  });
+
+  it('verify_notify_sign should reject decrypted notifications that are not successful payments', async () => {
+    const client = create_client();
+    const verifySign = vi.fn().mockResolvedValue(true);
+    const decipher_gcm = vi.fn().mockReturnValue({
+      trade_state: 'NOTPAY',
+      out_trade_no: 'order_400b',
+      amount: { total: 100 },
+    });
+    (client as any).sdk = { verifySign, decipher_gcm };
+
+    await expect(
+      client.verify_notify_sign({
+        body: {
+          resource: {
+            ciphertext: 'cipher',
+            associated_data: 'transaction',
+            nonce: 'nonce123',
+          },
+        } as any,
+        headers: {
+          'wechatpay-timestamp': '1730000000',
+          'wechatpay-nonce': 'nonce-sign',
+          'wechatpay-serial': 'serial-1',
+          'wechatpay-signature': 'signature-1',
+        },
+      }),
+    ).rejects.toThrow(Invalid_argument_external);
+  });
+
+  it('parse_notification should require key_v3 for callback decryption', () => {
+    const client = new Tenpay({
+      id: 'wx_test_appid',
+      mch_id: '1230000109',
+      notify_url: 'https://example.com/notify',
+      tenpay_cert_content_public,
+      tenpay_cert_content_private,
+    });
+
+    expect(() =>
+      client.parse_notification({
+        resource: {
+          ciphertext: 'cipher',
+          associated_data: 'transaction',
+          nonce: 'nonce123',
+        },
+      } as any),
+    ).toThrow(Invalid_argument_external);
+  });
+
   it('pay_mobile_web should use configured h5 app metadata', async () => {
     const client = new Tenpay({
       id: 'wx_test_appid',
@@ -270,6 +532,24 @@ describe('tenpay wrapper unit', () => {
         }),
       }),
     );
+  });
+
+  it('pay_mobile_web should throw on non-200 responses', async () => {
+    const client = create_client();
+    const transactions_h5 = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { transactions_h5 };
+
+    await expect(
+      client.pay_mobile_web({
+        unique: 'order_h5_2',
+        subject: 'H5 order',
+        fee: '10',
+        client_ip: '127.0.0.1',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
   });
 
   it('verify_notify_sign should reject invalid signature', async () => {
@@ -352,6 +632,17 @@ describe('tenpay wrapper unit', () => {
     expect(close).toHaveBeenCalledWith('order_close_tenpay');
   });
 
+  it('close should throw when sdk close returns an error response', async () => {
+    const client = create_client();
+    const close = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { close };
+
+    await expect(client.close({ unique: 'order_close_tenpay_2' })).rejects.toThrow(Invalid_state_external);
+  });
+
   it('download_trade_bill should call the tradebill sdk method', async () => {
     const client = create_client();
     const tradebill = vi.fn().mockResolvedValue({
@@ -374,6 +665,22 @@ describe('tenpay wrapper unit', () => {
     expect(r.url).toBe('https://wechat.example.com/tradebill');
   });
 
+  it('download_trade_bill should throw on non-200 responses', async () => {
+    const client = create_client();
+    const tradebill = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { tradebill };
+
+    await expect(
+      client.download_trade_bill({
+        bill_date: '2026-02-23',
+        bill_type: 'ALL',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
   it('download_fundflow_bill should call the fundflowbill sdk method', async () => {
     const client = create_client();
     const fundflowbill = vi.fn().mockResolvedValue({
@@ -394,6 +701,22 @@ describe('tenpay wrapper unit', () => {
       account_type: 'BASIC',
     });
     expect(r.url).toBe('https://wechat.example.com/fundflowbill');
+  });
+
+  it('download_fundflow_bill should throw on non-200 responses', async () => {
+    const client = create_client();
+    const fundflowbill = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { fundflowbill };
+
+    await expect(
+      client.download_fundflow_bill({
+        bill_date: '2026-02-23',
+        account_type: 'BASIC',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
   });
 
   it('transfer should create a one-detail transfer batch', async () => {
@@ -432,6 +755,23 @@ describe('tenpay wrapper unit', () => {
     expect(r.raw.batch_id).toBe('wx_batch_1');
   });
 
+  it('transfer should throw when the transfer batch request fails', async () => {
+    const client = create_client();
+    const batches_transfer = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { batches_transfer };
+
+    await expect(
+      client.transfer({
+        unique: 'batch_1_fail',
+        tid: 'openid_1',
+        fee: '10',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
+  });
+
   it('query_transfer should query by out_batch_no', async () => {
     const client = create_client();
     const query_batches_transfer_list = vi.fn().mockResolvedValue({
@@ -452,5 +792,56 @@ describe('tenpay wrapper unit', () => {
       need_query_detail: false,
     });
     expect(r.raw.transfer_batch.out_batch_no).toBe('batch_2');
+  });
+
+  it('query_transfer should throw when sdk returns a non-200 response', async () => {
+    const client = create_client();
+    const query_batches_transfer_list = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { query_batches_transfer_list };
+
+    await expect(client.query_transfer({ unique: 'batch_3' })).rejects.toThrow(Invalid_state_external);
+  });
+
+  it('query_transfer_detail should query by batch and detail ids', async () => {
+    const client = create_client();
+    const query_batches_transfer_detail = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        out_batch_no: 'batch_4',
+        out_detail_no: 'batch_4_detail_1',
+        detail_status: 'SUCCESS',
+      },
+    });
+    (client as any).sdk = { query_batches_transfer_detail };
+
+    const r = await client.query_transfer_detail({
+      unique: 'batch_4',
+      detail_unique: 'batch_4_detail_1',
+    });
+
+    expect(query_batches_transfer_detail).toHaveBeenCalledWith({
+      out_batch_no: 'batch_4',
+      out_detail_no: 'batch_4_detail_1',
+    });
+    expect(r.raw.detail_status).toBe('SUCCESS');
+  });
+
+  it('query_transfer_detail should throw when sdk returns a non-200 response', async () => {
+    const client = create_client();
+    const query_batches_transfer_detail = vi.fn().mockResolvedValue({
+      status: 500,
+      error: '{"code":"SYSTEM_ERROR","message":"busy"}',
+    });
+    (client as any).sdk = { query_batches_transfer_detail };
+
+    await expect(
+      client.query_transfer_detail({
+        unique: 'batch_5',
+        detail_unique: 'batch_5_detail_1',
+      }),
+    ).rejects.toThrow(Invalid_state_external);
   });
 });

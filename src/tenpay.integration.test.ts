@@ -1,8 +1,10 @@
 import { readFileSync } from 'fs';
 import { nanoid } from 'nanoid';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { Verification_error } from './error/verification_error';
 import { Tenpay } from './tenpay';
 
+const should_run_integration = process.env.PAYFACE_RUN_INTEGRATION === '1';
 const id = process.env.tenpay_id as string;
 const mchid = process.env.tenpay_mchid as string;
 const secret = process.env.tenpay_secret as string;
@@ -11,11 +13,7 @@ const tenpay_cert_content_private = readFileSync(__dirname + '/test_asset/tenpay
 const openid = process.env.tenpay_openid as string;
 
 const has_tenpay_env = Boolean(id && mchid && secret);
-if (!has_tenpay_env) {
-  console.warn(`Empty env: {tenpay_id:${id}} or {tenpay_mchid:${mchid}} or {tenpay_secret:${secret}}`);
-}
-
-const describe_tenpay = has_tenpay_env ? describe : describe.skip;
+const describe_tenpay = should_run_integration && has_tenpay_env ? describe : describe.skip;
 describe_tenpay('tenpay integration', () => {
   let client: Tenpay;
   beforeEach(() => {
@@ -66,9 +64,6 @@ describe_tenpay('tenpay integration', () => {
   });
 
   const has_openid = Boolean(openid);
-  if (!has_openid) {
-    console.warn('Require env: tenpay_openid');
-  }
   const it_with_openid = has_openid ? it : it.skip;
   it_with_openid('pay_jsapi', async () => {
     const r = await client.pay_jsapi({
@@ -86,9 +81,6 @@ describe_tenpay('tenpay integration', () => {
 
   const unique = process.env.tenpay_order_id;
   const describe_order = unique ? describe : describe.skip;
-  if (!unique) {
-    console.warn('Require env: tenpay_order_id');
-  }
 
   describe_order('order', () => {
     it('query', async () => {
@@ -105,35 +97,26 @@ describe_tenpay('tenpay integration', () => {
     });
   });
 
-  describe('refund', () => {
+  const refund_unique = process.env.tenpay_refund_unique as string;
+  const refund_fee = process.env.tenpay_refund_fee as string;
+  const has_refund_env = Boolean(refund_unique && refund_fee);
+  const describe_refund = has_refund_env ? describe : describe.skip;
+
+  describe_refund('refund', () => {
     it('common', async () => {
-      const refund_unique = process.env.tenpay_refund_unique as string;
-      const refund_fee = process.env.tenpay_refund_fee as any;
-      const refund_refund = process.env.tenpay_refund_fee as any;
-      if (!refund_unique || !refund_fee || !refund_refund) {
-        console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
-        return;
-      }
       await client.refund({
         unique: refund_unique,
         fee: refund_fee,
-        refund: refund_refund,
+        refund: refund_fee,
       });
     });
   });
 
-  describe('refund_query', () => {
+  describe_refund('refund_query', () => {
     it('common', async () => {
-      const refund_unique = process.env.tenpay_refund_unique as string;
-      const refund_refund = process.env.tenpay_refund_fee as any;
-      if (!refund_unique || !refund_refund) {
-        console.warn('Require env: tenpay_refund_unique, tenpay_refund_fee, tenpay_refund_refund');
-        return;
-      }
-
       const r = await client.refund_query({ unique: refund_unique });
       expect(r.ok).toBeTruthy();
-      expect(r.refund).toBe(refund_refund);
+      expect(r.refund).toBe(refund_fee);
       expect(r.pending).toBeFalsy();
       expect(r.raw).toBeTruthy();
     });

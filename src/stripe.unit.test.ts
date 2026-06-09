@@ -80,6 +80,68 @@ describe('stripe wrapper unit', () => {
     ).rejects.toThrow(/price_id/i);
   });
 
+  it('pay_mobile_web should create checkout session in subscription mode', async () => {
+    const client = create_client();
+    const create = vi.fn().mockResolvedValue({
+      id: 'cs_test_201',
+      url: 'https://checkout.stripe.com/c/pay/cs_test_201',
+    });
+    (client as any).sdk = {
+      checkout: {
+        sessions: { create },
+      },
+    };
+
+    const r = await client.pay_mobile_web({
+      unique: 'order_201',
+      mode: N_stripe_checkout_mode.subscription,
+      price_id: 'price_201',
+      quantity: 2,
+      success_url: 'https://app.example.com/success',
+      cancel_url: 'https://app.example.com/cancel',
+      metadata: {
+        seat_plan: 'team',
+      },
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'subscription',
+        line_items: [{ price: 'price_201', quantity: 2 }],
+        subscription_data: {
+          metadata: expect.objectContaining({
+            unique: 'order_201',
+            seat_plan: 'team',
+          }),
+        },
+      }),
+      { idempotencyKey: 'order_201' },
+    );
+    expect(r.url).toBe('https://checkout.stripe.com/c/pay/cs_test_201');
+  });
+
+  it('pay_mobile_web should throw when stripe returns no hosted url', async () => {
+    const client = create_client();
+    const create = vi.fn().mockResolvedValue({
+      id: 'cs_test_202',
+      url: '',
+    });
+    (client as any).sdk = {
+      checkout: {
+        sessions: { create },
+      },
+    };
+
+    await expect(
+      client.pay_mobile_web({
+        unique: 'order_202',
+        fee: '10',
+        success_url: 'https://app.example.com/success',
+        cancel_url: 'https://app.example.com/cancel',
+      }),
+    ).rejects.toThrow(/empty url/i);
+  });
+
   it('query should map paid checkout session into receipt', async () => {
     const client = create_client();
     const list = vi.fn().mockResolvedValue({
@@ -175,6 +237,77 @@ describe('stripe wrapper unit', () => {
     expect(r?.status).toBe('pending');
   });
 
+  it('query should map expired checkout session to closed status', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'cs_test_402',
+          mode: 'payment',
+          status: 'expired',
+          payment_status: 'unpaid',
+          created: 1730000000,
+          currency: 'usd',
+          amount_total: 1000,
+          client_reference_id: 'order_402',
+          payment_intent: null,
+        },
+      ],
+    });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list },
+      },
+    };
+
+    const r = await client.query({ unique: 'order_402' });
+    expect(r?.ok).toBe(false);
+    expect(r?.status).toBe('closed');
+  });
+
+  it('query should use invoice amount and currency fallback for subscription sessions', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'cs_test_403',
+          mode: 'subscription',
+          status: 'complete',
+          payment_status: 'no_payment_required',
+          created: 1730000000,
+          currency: null,
+          amount_total: null,
+          client_reference_id: 'order_403',
+          payment_intent: null,
+          subscription: {
+            id: 'sub_403',
+            status: 'active',
+          },
+          invoice: {
+            amount_paid: 2500,
+            currency: 'eur',
+            status_transitions: {
+              paid_at: 1730000000,
+            },
+          },
+        },
+      ],
+    });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list },
+      },
+    };
+
+    const r = await client.query({ unique: 'order_403' });
+    expect(r?.ok).toBe(true);
+    expect(r?.status).toBe('paid');
+    expect(r?.currency).toBe('eur');
+    expect(r?.fee).toBe('25');
+  });
+
   it('verify_notify_sign should verify by stripe-signature header', async () => {
     const client = create_client();
     const constructEvent = vi.fn().mockReturnValue({
@@ -235,6 +368,49 @@ describe('stripe wrapper unit', () => {
       trusted_event_types: ['invoice.paid'],
     });
     expect(r.type).toBe('invoice.paid');
+  });
+
+  it('verify_notify_sign should require a string or buffer body', async () => {
+    const client = create_client();
+
+    await expect(
+      client.verify_notify_sign({
+        body: { id: 'evt_bad_body' } as any,
+        headers: {
+          'stripe-signature': 't=1,v1=abc',
+        },
+      }),
+    ).rejects.toThrow(/raw body string or Buffer/i);
+  });
+
+  it('verify_notify_sign should reject missing signature values', async () => {
+    const client = create_client();
+
+    await expect(
+      client.verify_notify_sign({
+        body: '{"id":"evt_missing_sig"}',
+        headers: {},
+      }),
+    ).rejects.toThrow(/signature/i);
+  });
+
+  it('verify_notify_sign should wrap constructEvent failures', async () => {
+    const client = create_client();
+    const constructEvent = vi.fn().mockImplementation(() => {
+      throw new Error('bad signature');
+    });
+    (client as any).sdk = {
+      webhooks: { constructEvent },
+    };
+
+    await expect(
+      client.verify_notify_sign({
+        body: '{"id":"evt_bad_sig"}',
+        headers: {
+          'stripe-signature': 't=1,v1=abc',
+        },
+      }),
+    ).rejects.toThrow(/Invalid Stripe webhook signature/i);
   });
 
   it('refund should create refund with unique idempotency key', async () => {
@@ -339,6 +515,103 @@ describe('stripe wrapper unit', () => {
     );
   });
 
+  it('refund should throw when checkout session cannot be found', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({ data: [] });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list },
+      },
+      refunds: {
+        create: vi.fn(),
+      },
+    };
+
+    await expect(
+      client.refund({
+        unique: 'order_missing',
+        refund: '1',
+      }),
+    ).rejects.toThrow(/Could not find checkout session/i);
+  });
+
+  it('refund should throw when checkout session has no payment intent', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'cs_test_502',
+          mode: 'payment',
+          payment_status: 'paid',
+          created: 1730000000,
+          currency: 'usd',
+          amount_total: 1000,
+          client_reference_id: 'order_502',
+          payment_intent: null,
+          invoice: null,
+        },
+      ],
+    });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list },
+      },
+      refunds: {
+        create: vi.fn(),
+      },
+    };
+
+    await expect(
+      client.refund({
+        unique: 'order_502',
+        refund: '1',
+      }),
+    ).rejects.toThrow(/Could not find payment intent/i);
+  });
+
+  it('refund should throw when stripe returns a failed refund status', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'cs_test_503',
+          mode: 'payment',
+          payment_status: 'paid',
+          created: 1730000000,
+          currency: 'usd',
+          amount_total: 1000,
+          client_reference_id: 'order_503',
+          payment_intent: 'pi_503',
+          invoice: null,
+        },
+      ],
+    });
+    const create_refund = vi.fn().mockResolvedValue({
+      id: 're_503',
+      status: 'failed',
+      amount: 100,
+      currency: 'usd',
+    });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list },
+      },
+      refunds: {
+        create: create_refund,
+      },
+    };
+
+    await expect(
+      client.refund({
+        unique: 'order_503',
+        refund: '1',
+      }),
+    ).rejects.toThrow(/Stripe refund failed/i);
+  });
+
   it('refund_query should map refund status', async () => {
     const client = create_client();
     const list_sessions = vi.fn().mockResolvedValue({
@@ -434,6 +707,39 @@ describe('stripe wrapper unit', () => {
     expect(r.refund).toBe('2');
   });
 
+  it('refund_query should throw when no refund records are found', async () => {
+    const client = create_client();
+    const list_sessions = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'cs_test_602',
+          mode: 'payment',
+          payment_status: 'paid',
+          created: 1730000000,
+          currency: 'usd',
+          amount_total: 1000,
+          client_reference_id: 'order_602',
+          payment_intent: 'pi_602',
+          invoice: null,
+        },
+      ],
+    });
+    const list_refunds = vi.fn().mockResolvedValue({
+      data: [],
+    });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list: list_sessions },
+      },
+      refunds: {
+        list: list_refunds,
+      },
+    };
+
+    await expect(client.refund_query({ unique: 'order_602' })).rejects.toThrow(/Could not query refund/i);
+  });
+
   it('parse_notify should normalize a checkout completion event', async () => {
     const client = create_client();
     const constructEvent = vi.fn().mockReturnValue({
@@ -472,6 +778,71 @@ describe('stripe wrapper unit', () => {
     expect(r.status).toBe('paid');
   });
 
+  it('parse_notify should normalize refund events', async () => {
+    const client = create_client();
+    const constructEvent = vi.fn().mockReturnValue({
+      id: 'evt_refund_1',
+      type: 'refund.updated',
+      created: 1730000000,
+      data: {
+        object: {
+          id: 're_1',
+          status: 'pending',
+          amount: 250,
+          currency: 'usd',
+          metadata: {
+            unique: 'order_notify_2',
+            refund_unique: 'refund_notify_2',
+          },
+        },
+      },
+    });
+    (client as any).sdk = {
+      webhooks: { constructEvent },
+    };
+
+    const r = await client.parse_notify({
+      body: '{"id":"evt_refund_1"}',
+      headers: {
+        'stripe-signature': 't=1,v1=abc',
+      },
+    });
+
+    expect(r.kind).toBe('refund');
+    expect(r.unique).toBe('order_notify_2');
+    expect(r.refund_unique).toBe('refund_notify_2');
+    expect(r.status).toBe('pending');
+    expect(r.refund).toBe('2.5');
+  });
+
+  it('parse_notify should map unknown events into unknown envelopes', async () => {
+    const client = create_client();
+    const constructEvent = vi.fn().mockReturnValue({
+      id: 'evt_unknown_1',
+      type: 'payment_method.attached',
+      created: 1730000000,
+      data: {
+        object: {
+          id: 'pm_1',
+        },
+      },
+    });
+    (client as any).sdk = {
+      webhooks: { constructEvent },
+    };
+
+    const r = await client.parse_notify({
+      body: '{"id":"evt_unknown_1"}',
+      headers: {
+        'stripe-signature': 't=1,v1=abc',
+      },
+    });
+
+    expect(r.kind).toBe('unknown');
+    expect(r.status).toBe('unknown');
+    expect(r.event_id).toBe('evt_unknown_1');
+  });
+
   it('build_notify_ack should return a no-body 200 response for stripe', () => {
     const client = create_client();
     expect(client.build_notify_ack()).toEqual({
@@ -500,6 +871,52 @@ describe('stripe wrapper unit', () => {
     await client.close({ unique: 'cs_test_close' });
 
     expect(expire).toHaveBeenCalledWith('cs_test_close');
+  });
+
+  it('close should resolve merchant order ids before expiring the session', async () => {
+    const client = create_client();
+    const expire = vi.fn().mockResolvedValue({ id: 'cs_test_close_lookup', status: 'expired' });
+    const search = vi.fn().mockResolvedValue({
+      data: [{ id: 'pi_close_lookup' }],
+    });
+    const list = vi.fn().mockResolvedValue({
+      data: [{ id: 'cs_test_close_lookup' }],
+    });
+    (client as any).sdk = {
+      paymentIntents: { search },
+      subscriptions: {
+        search: vi.fn().mockResolvedValue({ data: [] }),
+      },
+      checkout: {
+        sessions: { list, expire },
+      },
+    };
+
+    await client.close({ unique: 'order_close_lookup' });
+
+    expect(search).toHaveBeenCalledWith({
+      query: "metadata['unique']:'order_close_lookup'",
+      limit: 1,
+    });
+    expect(list).toHaveBeenCalledWith({
+      payment_intent: 'pi_close_lookup',
+      limit: 1,
+      expand: ['data.payment_intent', 'data.invoice.payments.data.payment.payment_intent', 'data.subscription'],
+    });
+    expect(expire).toHaveBeenCalledWith('cs_test_close_lookup');
+  });
+
+  it('close should throw when it cannot resolve a checkout session', async () => {
+    const client = create_client();
+    const list = vi.fn().mockResolvedValue({ data: [], has_more: false });
+    (client as any).sdk = {
+      ...search_mocks(),
+      checkout: {
+        sessions: { list, expire: vi.fn() },
+      },
+    };
+
+    await expect(client.close({ unique: 'order_close_missing' })).rejects.toThrow(/Could not find checkout session/i);
   });
 
   it('create_payout should create a payout with converted amount', async () => {

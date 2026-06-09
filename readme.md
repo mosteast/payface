@@ -151,9 +151,14 @@ npm install --package-lock=false
 npm run typecheck
 npm run test:run
 npm run coverage
+npm run test:integration
 npm run pack:check
 ```
 
 This repo intentionally does not commit `package-lock.json`, so local setup and CI use `npm install --package-lock=false`.
+
+`npm run test:run` only runs stable unit tests and does not require real provider credentials.
+
+`npm run test:integration` is opt-in and only runs the live provider suites in `src/*.integration.test.ts`.
 
 See `.env.example` for integration-test variables and `examples/` for usage samples.

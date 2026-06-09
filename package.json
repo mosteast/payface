@@ -19,6 +19,7 @@
     "pack:check": "npm run build && cd build && rm -f ./*.tgz && npm pack --json > /dev/null && rm -f ./*.tgz",
     "release": "npm run build && cd build && npm publish --access public",
     "test": "NODE_ENV=test vitest",
+    "test:integration": "PAYFACE_RUN_INTEGRATION=1 NODE_ENV=test vitest run src/alipay.integration.test.ts src/tenpay.integration.test.ts",
     "test:run": "NODE_ENV=test vitest run",
     "typecheck": "tsc --noEmit"
   },
