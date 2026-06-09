@@ -1,6 +1,6 @@
 {
   "name": "payface",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "TypeScript payment SDK for Alipay, Wechat Pay v3, and Stripe",
   "homepage": "https://github.com/mosteast/payface#readme",
   "repository": "github:mosteast/payface",
