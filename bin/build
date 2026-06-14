@@ -48,6 +48,7 @@ function edit_config() {
     files: ['index.js', 'index.d.ts', 'src/', 'readme.md', 'CHANGELOG.md'],
     exports: {
       '.': {
+        import: './index.js',
         require: './index.js',
         types: './index.d.ts',
       },
